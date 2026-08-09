@@ -1,0 +1,72 @@
+menu "ZMK Per-Key Underglow"
+
+menuconfig ZMK_PK_UNDERGLOW
+	bool "ZMK Per-Key Underglow"
+	select LED_STRIP
+	select SPI
+	help
+	  Enable support for per-key and per-layer RGB underglow.
+	  This acts as a replacement for standard ZMK RGB Underglow.
+
+config ZMK_PK_UNDERGLOW_LAYER
+	bool "Enable ZMK Per-Key Underglow Layer feature"
+	depends on ZMK_PK_UNDERGLOW
+	default y
+
+config ZMK_PK_UNDERGLOW_EXT_POWER
+	bool "ZMK_PK_UNDERGLOW_EXT_POWER"
+	default n
+
+config ZMK_PK_UNDERGLOW_AUTO_OFF_USB
+	bool "ZMK_PK_UNDERGLOW_AUTO_OFF_USB"
+	default n
+
+config ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE
+	bool "ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE"
+	default n
+
+config ZMK_PK_UNDERGLOW_ON_START
+	bool "ZMK_PK_UNDERGLOW_ON_START"
+	default n
+
+config ZMK_PK_UNDERGLOW_BRT_STEP
+	int "ZMK_PK_UNDERGLOW_BRT_STEP"
+	default 10
+
+config ZMK_PK_UNDERGLOW_BRT_MIN
+	int "ZMK_PK_UNDERGLOW_BRT_MIN"
+	default 0
+
+config ZMK_PK_UNDERGLOW_BRT_MAX
+	int "ZMK_PK_UNDERGLOW_BRT_MAX"
+	default 100
+
+config ZMK_PK_UNDERGLOW_BRT_START
+	int "ZMK_PK_UNDERGLOW_BRT_START"
+	default 100
+
+config ZMK_PK_UNDERGLOW_HUE_STEP
+	int "ZMK_PK_UNDERGLOW_HUE_STEP"
+	default 10
+
+config ZMK_PK_UNDERGLOW_HUE_START
+	int "ZMK_PK_UNDERGLOW_HUE_START"
+	default 0
+
+config ZMK_PK_UNDERGLOW_SAT_STEP
+	int "ZMK_PK_UNDERGLOW_SAT_STEP"
+	default 10
+
+config ZMK_PK_UNDERGLOW_SAT_START
+	int "ZMK_PK_UNDERGLOW_SAT_START"
+	default 100
+
+config ZMK_PK_UNDERGLOW_SPD_START
+	int "ZMK_PK_UNDERGLOW_SPD_START"
+	default 3
+
+config ZMK_PK_UNDERGLOW_EFF_START
+	int "ZMK_PK_UNDERGLOW_EFF_START"
+	default 0
+
+endmenu

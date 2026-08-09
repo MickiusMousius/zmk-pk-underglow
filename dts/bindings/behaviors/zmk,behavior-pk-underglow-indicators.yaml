@@ -1,0 +1,10 @@
+description: Set underglow for HID indicators
+
+compatible: "zmk,behavior-pk-underglow-indicators"
+
+include: two_param.yaml
+
+properties:
+  indicator:
+    type: int
+    default: 0

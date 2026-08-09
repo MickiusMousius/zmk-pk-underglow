@@ -1,0 +1,5 @@
+description: Set underglow to specified color
+
+compatible: "zmk,behavior-pk-underglow-color"
+
+include: one_param.yaml
