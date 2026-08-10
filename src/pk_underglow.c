@@ -178,7 +178,7 @@ static void zmk_pk_underglow_effect_breathe(void) {
         pixels[i] = hsb_to_rgb(hsb_scale_zero_max(hsb));
     }
 
-    state.animation_step += state.animation_speed * 10;
+    state.animation_step += state.animation_speed * 13;
 
     if (state.animation_step > 2400) {
         state.animation_step = 0;
@@ -205,12 +205,24 @@ static void zmk_pk_underglow_effect_swirl(void) {
         pixels[i] = hsb_to_rgb(hsb_scale_min_max(hsb));
     }
 
-    state.animation_step += state.animation_speed * 2;
+    state.animation_step += state.animation_speed * 3;
     state.animation_step = state.animation_step % HUE_MAX;
 }
 
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
+static int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings,
+                                         size_t bindings_len, uint8_t layer);
+
 static void zmk_pk_underglow_effect_layer(void) {
+    uint8_t top_layer = pk_underglow_top_layer();
+    if (zmk_rgbmap_is_animated(top_layer)) {
+        const struct zmk_behavior_binding *rgbmap = pk_underglow_get_bindings(top_layer);
+        if (rgbmap != NULL) {
+            zmk_pk_underglow_apply_rgbmap(rgbmap, ZMK_KEYMAP_LEN, top_layer);
+        }
+        return;
+    }
+
     bool active = false;
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         pixels[i].r -= state.animation_speed < pixels[i].r ? state.animation_speed : pixels[i].r;
@@ -280,7 +292,7 @@ static int rgb_settings_set(const char *name, size_t len, settings_read_cb read_
         rc = read_cb(cb_arg, &state, sizeof(state));
         if (rc >= 0) {
             if (state.on) {
-                k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(50));
+                k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(67));
             }
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
             if (state.layer_enabled) {
@@ -349,7 +361,7 @@ static int zmk_pk_underglow_init(void) {
 #endif
 
     if (state.on) {
-        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(50));
+        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(67));
     }
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state.layer_enabled) {
@@ -394,7 +406,7 @@ int zmk_pk_underglow_transient_on(void) {
     state.animation_step = 0;
 
     if (is_powered) {
-        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(50));
+        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(67));
         return 0;
     }
 
@@ -417,7 +429,7 @@ int zmk_pk_underglow_transient_on(void) {
     }
 
     is_powered = true;
-    k_timer_start(&underglow_tick, K_MSEC(10), K_MSEC(50));
+    k_timer_start(&underglow_tick, K_MSEC(10), K_MSEC(67));
 
     return 0;
 }
@@ -579,8 +591,11 @@ static void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup) {
         k_timer_stop(&underglow_tick);
         state.animation_step = 0;
         int fade_delay = zmk_rgbmap_fade_delay(layer);
-        if (fade_delay >= 0) {
-            k_timer_start(&underglow_tick, K_SECONDS(fade_delay), K_MSEC(50));
+        bool animated = zmk_rgbmap_is_animated(layer);
+        if (fade_delay > 0) {
+            k_timer_start(&underglow_tick, K_SECONDS(fade_delay), K_MSEC(67));
+        } else if (animated || fade_delay == 0) {
+            k_timer_start(&underglow_tick, K_MSEC(67), K_MSEC(67));
         }
         LOG_DBG("write pixels");
         int err = led_strip_update_rgb(led_strip, pixels, STRIP_NUM_PIXELS);

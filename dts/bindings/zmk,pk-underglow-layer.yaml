@@ -22,6 +22,9 @@ child-binding:
     layer-id:
       type: array
       required: true
+    animated:
+      type: boolean
+      required: false
     fade-delay:
       type: int
       required: false

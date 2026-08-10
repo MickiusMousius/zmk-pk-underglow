@@ -14,6 +14,12 @@
             display-name = "Underglow Effect Hue";
         };
 
+        eff_bt: pk_underglow_eff_bt {
+            compatible = "zmk,behavior-pk-underglow-eff-bt";
+            #binding-cells = <1>;
+            display-name = "Underglow Effect BT Profile";
+        };
+
         ug_nl: ugnumlk {
             compatible = "zmk,behavior-pk-underglow-indicators";
             indicator = <NUM_LOCK>;

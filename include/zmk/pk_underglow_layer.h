@@ -24,6 +24,7 @@
 const int rgb_pixel_lookup(int idx);
 const int zmk_rgbmap_id(uint8_t layer);
 const int zmk_rgbmap_fade_delay(uint8_t layer);
+bool zmk_rgbmap_is_animated(uint8_t layer);
 
 const struct zmk_behavior_binding *pk_underglow_get_bindings(uint8_t layer);
 
