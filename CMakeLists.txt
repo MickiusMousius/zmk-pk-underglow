@@ -11,5 +11,5 @@ zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/behaviors/behavior_pk_u
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/behaviors/behavior_pk_underglow_sync.c)
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/events/underglow_color_changed.c)
 
-zephyr_include_directories(include)
-zephyr_include_directories(${ZEPHYR_BASE}/../app/include)
+zephyr_library_include_directories(include)
+zephyr_library_include_directories(${CMAKE_SOURCE_DIR}/include)
