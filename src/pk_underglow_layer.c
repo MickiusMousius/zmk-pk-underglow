@@ -39,15 +39,21 @@ RGBMAP_VAR(zmk_rgbmap, COND_CODE_1(IS_ENABLED(CONFIG_ZMK_KEYMAP_SETTINGS_STORAGE
 
 const int pixel_lookup_table[] = DT_INST_PROP(0, pixel_lookup);
 
-static int zmk_rgbmap_ids[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, LAYER_ID, (, ))};
+#define LAYER_IDS_PTR(node) (const int[])DT_PROP(node, layer_id)
+#define LAYER_IDS_LEN_MACRO(node) DT_PROP_LEN(node, layer_id)
+
+static const int *zmk_rgbmap_ids[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, LAYER_IDS_PTR, (, ))};
+static const size_t zmk_rgbmap_ids_lens[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, LAYER_IDS_LEN_MACRO, (, ))};
 static int zmk_rgbmap_fds[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, FADE_DELAY, (, ))};
 
 const int rgb_pixel_lookup(int idx) { return pixel_lookup_table[idx]; };
 
 const int zmk_rgbmap_id(uint8_t layer) {
     for (uint8_t i = 0; i < ZMK_RGBMAP_LAYERS_LEN; i++) {
-        if (zmk_rgbmap_ids[i] == layer) {
-            return i;
+        for (size_t j = 0; j < zmk_rgbmap_ids_lens[i]; j++) {
+            if (zmk_rgbmap_ids[i][j] == layer) {
+                return i;
+            }
         }
     }
     return -1;

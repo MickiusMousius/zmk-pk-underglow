@@ -20,7 +20,7 @@ child-binding:
       type: phandle-array
       required: true
     layer-id:
-      type: int
+      type: array
       required: true
     fade-delay:
       type: int
