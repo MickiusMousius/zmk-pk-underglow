@@ -602,6 +602,12 @@ int zmk_pk_underglow_set_hsb(struct zmk_led_hsb color) {
 
     state.color = color;
 
+#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
+    if (state.layer_enabled) {
+        zmk_pk_underglow_set_layer(pk_underglow_top_layer(), false);
+    }
+#endif
+
     return 0;
 }
 
@@ -643,6 +649,12 @@ int zmk_pk_underglow_change_hue(int direction) {
 
     state.color = zmk_pk_underglow_calc_hue(direction);
 
+#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
+    if (state.layer_enabled) {
+        zmk_pk_underglow_set_layer(pk_underglow_top_layer(), false);
+    }
+#endif
+
     return zmk_pk_underglow_save_state();
 }
 
@@ -652,6 +664,12 @@ int zmk_pk_underglow_change_sat(int direction) {
 
     state.color = zmk_pk_underglow_calc_sat(direction);
 
+#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
+    if (state.layer_enabled) {
+        zmk_pk_underglow_set_layer(pk_underglow_top_layer(), false);
+    }
+#endif
+
     return zmk_pk_underglow_save_state();
 }
 
@@ -660,6 +678,12 @@ int zmk_pk_underglow_change_brt(int direction) {
         return -ENODEV;
 
     state.color = zmk_pk_underglow_calc_brt(direction);
+
+#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
+    if (state.layer_enabled) {
+        zmk_pk_underglow_set_layer(pk_underglow_top_layer(), false);
+    }
+#endif
 
     return zmk_pk_underglow_save_state();
 }
