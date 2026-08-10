@@ -900,7 +900,7 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
 
     // Apply the layer if the effect relies on it
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
-    zmk_pk_underglow_set_layer(layer, false);
+    zmk_pk_underglow_set_peripheral_layer(layer);
 #endif
 
     // Apply the state directive
