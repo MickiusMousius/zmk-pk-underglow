@@ -885,7 +885,10 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
     state.color.b = (param1 >> 24) & 0xFF;
 
     // Unpack param2 (State & Effect)
+    uint8_t old_effect = state.current_effect;
     state.current_effect = param2 & 0xFF;
+    bool effect_changed = (old_effect != state.current_effect);
+    
     state.animation_speed = (param2 >> 8) & 0xFF;
     uint8_t layer = (param2 >> 16) & 0xFF;
     state.on = (param2 >> 24) & 1;
@@ -908,7 +911,9 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
     } else {
         // Normal sync: Ensure timer runs if the central is on
         if (state.on) {
-            zmk_pk_underglow_transient_on();
+            if (!is_powered || effect_changed) {
+                zmk_pk_underglow_transient_on();
+            }
         } else {
             zmk_pk_underglow_transient_off();
         }
