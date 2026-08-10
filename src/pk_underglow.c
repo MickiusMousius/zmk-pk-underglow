@@ -8,6 +8,7 @@
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
 #include <zephyr/settings/settings.h>
+#include <zephyr/pm/device.h>
 
 #include <math.h>
 #include <stdlib.h>
@@ -786,11 +787,11 @@ static int pk_underglow_auto_state(bool target_wake_state) {
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     LOG_DBG("Peripheral: Checking if central is connected (is_central_connected=%d)", is_central_connected);
-    if (is_central_connected) {
+    if (is_central_connected && zmk_activity_get_state() != ZMK_ACTIVITY_SLEEP) {
         LOG_DBG("Peripheral: Central is connected, deferring auto_state to central sync.");
         return 0;
     }
-    LOG_DBG("Peripheral: Central NOT connected, self-managing idle state.");
+    LOG_DBG("Peripheral: Central NOT connected or entering deep sleep, self-managing idle state.");
 #endif
 
     if (sleep_state.is_awake) {
@@ -821,11 +822,21 @@ void zmk_pk_underglow_set_peripheral_layer(uint8_t layer) {
 
 static int pk_underglow_event_listener(const zmk_event_t *eh) {
 
-#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
     if (as_zmk_activity_state_changed(eh)) {
-        return pk_underglow_auto_state(zmk_activity_get_state() == ZMK_ACTIVITY_ACTIVE);
-    }
+        enum zmk_activity_state state = zmk_activity_get_state();
+        
+        bool should_handle = false;
+#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
+        should_handle = true;
+#else
+        if (state == ZMK_ACTIVITY_SLEEP || state == ZMK_ACTIVITY_ACTIVE) {
+            should_handle = true;
+        }
 #endif
+        if (should_handle) {
+            return pk_underglow_auto_state(state == ZMK_ACTIVITY_ACTIVE);
+        }
+    }
 
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
@@ -946,3 +957,25 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
 #endif
 
 SYS_INIT(zmk_pk_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+
+#if IS_ENABLED(CONFIG_PM_DEVICE)
+static int pk_underglow_pm_action(const struct device *dev, enum pm_device_action action) {
+    switch (action) {
+    case PM_DEVICE_ACTION_SUSPEND:
+        if (is_powered) {
+            zmk_pk_underglow_off_handler(NULL);
+        }
+        break;
+    default:
+        return -ENOTSUP;
+    }
+    return 0;
+}
+
+static int pk_underglow_pm_init(const struct device *dev) {
+    return 0;
+}
+
+PM_DEVICE_DEFINE(pk_underglow_pm, pk_underglow_pm_action);
+DEVICE_DEFINE(pk_underglow_pm, "pk_underglow_pm", pk_underglow_pm_init, PM_DEVICE_GET(pk_underglow_pm), NULL, NULL, POST_KERNEL, CONFIG_APPLICATION_INIT_PRIORITY, NULL);
+#endif
