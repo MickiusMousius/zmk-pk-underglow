@@ -632,14 +632,27 @@ struct pk_underglow_sleep_state {
     bool rgb_state_before_sleeping;
 };
 
+static struct pk_underglow_sleep_state sleep_state = {
+    .is_awake = true,
+    .rgb_state_before_sleeping = false
+};
+
 static void sync_peripheral_state(uint8_t layer, int state_directive) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    uint32_t param1 = (state.color.h & 0xFFFF) | ((state.color.s & 0xFF) << 16) | ((state.color.b & 0xFF) << 24);
+    uint32_t param2 = (state.current_effect & 0xFF) | 
+                      ((state.animation_speed & 0xFF) << 8) | 
+                      ((layer & 0xFF) << 16) | 
+                      ((state.on ? 1 : 0) << 24) | 
+                      ((state_directive & 0x03) << 25) |
+                      ((state.layer_enabled ? 1 : 0) << 27);
+
     LOG_DBG("Central: Broadcasting ug_sync with layer %d, state_directive %d", layer, state_directive);
 #if DT_HAS_COMPAT_STATUS_OKAY(zmk_behavior_pk_underglow_sync)
     struct zmk_behavior_binding binding = {
         .behavior_dev = DEVICE_DT_NAME(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_behavior_pk_underglow_sync)),
-        .param1 = layer,
-        .param2 = state_directive,
+        .param1 = param1,
+        .param2 = param2,
     };
     struct zmk_behavior_binding_event event = {
         .position = 0,
@@ -653,11 +666,35 @@ static void sync_peripheral_state(uint8_t layer, int state_directive) {
 #endif
 }
 
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) && IS_ENABLED(CONFIG_BT)
+#include <zephyr/bluetooth/conn.h>
+
+static void sync_peripheral_delayed_work_handler(struct k_work *work) {
+    uint8_t layer = pk_underglow_top_layer();
+    sync_peripheral_state(layer, 0); // Layer sync
+#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
+    if (!sleep_state.is_awake) {
+        sync_peripheral_state(layer, 2); // Sleep sync
+    }
+#endif
+}
+
+static K_WORK_DELAYABLE_DEFINE(sync_peripheral_delayed_work, sync_peripheral_delayed_work_handler);
+
+static void pk_underglow_bt_connected(struct bt_conn *conn, uint8_t err) {
+    if (err) {
+        return;
+    }
+    // Re-sync peripheral state 500ms after connection to ensure consistency
+    k_work_schedule(&sync_peripheral_delayed_work, K_MSEC(500));
+}
+
+BT_CONN_CB_DEFINE(pk_underglow_bt_conn_cb) = {
+    .connected = pk_underglow_bt_connected,
+};
+#endif
+
 static int pk_underglow_auto_state(bool target_wake_state) {
-    static struct pk_underglow_sleep_state sleep_state = {
-        is_awake : true,
-        rgb_state_before_sleeping : false
-    };
 
     // wake up event while awake, or sleep event while sleeping -> no-op
     if (target_wake_state == sleep_state.is_awake) {
@@ -782,6 +819,45 @@ ZMK_SUBSCRIPTION(pk_underglow, zmk_split_peripheral_status_changed);
 ZMK_SUBSCRIPTION(pk_underglow, zmk_layer_state_changed);
 #endif
 ZMK_SUBSCRIPTION(pk_underglow, zmk_underglow_color_changed);
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
+    // Unpack param1 (Color)
+    state.color.h = param1 & 0xFFFF;
+    state.color.s = (param1 >> 16) & 0xFF;
+    state.color.b = (param1 >> 24) & 0xFF;
+
+    // Unpack param2 (State & Effect)
+    state.current_effect = param2 & 0xFF;
+    state.animation_speed = (param2 >> 8) & 0xFF;
+    uint8_t layer = (param2 >> 16) & 0xFF;
+    state.on = (param2 >> 24) & 1;
+    int state_directive = (param2 >> 25) & 3;
+    state.layer_enabled = (param2 >> 27) & 1;
+
+    LOG_DBG("Peripheral: Extracted ug_sync state. Effect=%d, Hue=%d, Layer=%d, StateDirective=%d", 
+            state.current_effect, state.color.h, layer, state_directive);
+
+    // Apply the layer if the effect relies on it
+#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
+    zmk_pk_underglow_set_layer(layer, false);
+#endif
+
+    // Apply the state directive
+    if (state_directive == 1) {
+        zmk_pk_underglow_transient_on();
+    } else if (state_directive == 2) {
+        zmk_pk_underglow_transient_off();
+    } else {
+        // Normal sync: Ensure timer runs if the central is on
+        if (state.on) {
+            zmk_pk_underglow_transient_on();
+        } else {
+            zmk_pk_underglow_transient_off();
+        }
+    }
+}
 #endif
 
 SYS_INIT(zmk_pk_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);

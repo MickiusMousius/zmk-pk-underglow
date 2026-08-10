@@ -23,14 +23,7 @@ static int underglow_sync_init(const struct device *dev) { return 0; };
 static int underglow_sync_process(struct zmk_behavior_binding *binding,
                                    struct zmk_behavior_binding_event event) {
 #if !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-    LOG_DBG("Peripheral: Received ug_sync! param1 (layer) = %d, param2 (state_directive) = %d", binding->param1, binding->param2);
-    zmk_pk_underglow_set_peripheral_layer(binding->param1);
-    
-    if (binding->param2 == 1) {
-        zmk_pk_underglow_transient_on();
-    } else if (binding->param2 == 2) {
-        zmk_pk_underglow_transient_off();
-    }
+    zmk_pk_underglow_sync_state(binding->param1, binding->param2);
 #endif
     return 0;
 }

@@ -32,4 +32,5 @@ int zmk_pk_underglow_set_hsb(struct zmk_led_hsb color);
 
 #if !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 void zmk_pk_underglow_set_peripheral_layer(uint8_t layer);
+void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2);
 #endif
