@@ -1,0 +1,12 @@
+# Copyright (c) 2024 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+
+description: PK underglow sync command
+compatible: "zmk,behavior-pk-underglow-sync"
+properties:
+    "#binding-cells":
+        type: int
+        const: 0
+    display-name:
+        type: string
+        description: Human readable name for ZMK Studio

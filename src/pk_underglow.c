@@ -35,6 +35,9 @@
 #include <zmk/events/layer_state_changed.h>
 #include <zmk/pk_split_sync.h>
 
+#if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+#include <zmk/split/central.h>
+#endif
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
@@ -675,15 +678,28 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
     if (as_zmk_layer_state_changed(eh)) {
         const struct zmk_layer_state_changed *ev = as_zmk_layer_state_changed(eh);
         LOG_DBG("zmk_layer_state_changed: %08x", ev->state);
-        
         uint8_t layer = pk_underglow_top_layer();
-        LOG_DBG("top layer: %d", layer);
         zmk_pk_underglow_set_layer(layer, true);
+
+#if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+#if DT_HAS_COMPAT_STATUS_OKAY(zmk_behavior_pk_underglow_sync)
+        struct zmk_behavior_binding binding = {
+            .behavior_dev = DEVICE_DT_NAME(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_behavior_pk_underglow_sync)),
+            .param1 = layer,
+            .param2 = 0,
+        };
+        struct zmk_behavior_binding_event event = {
+            .position = 0,
+            .timestamp = k_uptime_get(),
+        };
         
-#if IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_ROLE_CENTRAL) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-        zmk_pk_split_sync_send_layer(layer);
+        for (int i = 0; i < 8; i++) {
+            zmk_split_central_invoke_behavior(i, &binding, event, true);
+            zmk_split_central_invoke_behavior(i, &binding, event, false);
+        }
 #endif
-        return 0;
+#endif
+        return ZMK_EV_EVENT_BUBBLE;
     }
 #endif
     if (as_zmk_underglow_color_changed(eh)) {

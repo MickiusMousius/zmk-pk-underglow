@@ -5,6 +5,7 @@ zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/pk_split_sync.c)
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/behaviors/behavior_pk_underglow.c)
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/behaviors/behavior_pk_underglow_color.c)
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/behaviors/behavior_pk_underglow_indicators.c)
+zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/behaviors/behavior_pk_underglow_sync.c)
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/events/underglow_color_changed.c)
 
 zephyr_include_directories(include)

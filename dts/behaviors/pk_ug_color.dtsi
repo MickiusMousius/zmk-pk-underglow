@@ -56,5 +56,11 @@
             #binding-cells = <2>;
             display-name = "Underglow Battery level 80%";
         };
+
+        ug_sync: ugsync {
+            compatible = "zmk,behavior-pk-underglow-sync";
+            #binding-cells = <0>;
+            display-name = "Underglow Layer Sync";
+        };
     };
 };
