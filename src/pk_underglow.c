@@ -783,6 +783,15 @@ static int pk_underglow_auto_state(bool target_wake_state) {
     LOG_DBG("Auto state changed. Target wake: %d. Syncing to peripheral...", target_wake_state);
     sync_peripheral_state(pk_underglow_top_layer(), target_wake_state ? 1 : 2);
 
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) && IS_ENABLED(CONFIG_BT)
+    // Force sending a standard payload shortly after waking, simulating a layer change.
+    // This allows the peripheral's power circuit ample time to stabilize before
+    // receiving the final color state, ensuring the LEDs latch the data correctly.
+    if (target_wake_state) {
+        k_work_schedule(&sync_peripheral_delayed_work, K_MSEC(100));
+    }
+#endif
+
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     LOG_DBG("Peripheral: Checking if central is connected (is_central_connected=%d)", is_central_connected);
     if (is_central_connected && zmk_activity_get_state() != ZMK_ACTIVITY_SLEEP) {
@@ -839,6 +848,9 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
     if (as_zmk_layer_state_changed(eh)) {
+        if (!sleep_state.is_awake) {
+            return ZMK_EV_EVENT_BUBBLE;
+        }
         const struct zmk_layer_state_changed *ev = as_zmk_layer_state_changed(eh);
         LOG_DBG("zmk_layer_state_changed: %08x", ev->state);
         uint8_t layer = pk_underglow_top_layer();
@@ -866,18 +878,25 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
 #endif
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    static bool was_awake_before_disconnect = false;
     if (as_zmk_split_peripheral_status_changed(eh)) {
         const struct zmk_split_peripheral_status_changed *ev = as_zmk_split_peripheral_status_changed(eh);
         is_central_connected = ev->connected;
         LOG_DBG("Peripheral: Split status changed. Connected: %d", is_central_connected);
         if (!is_central_connected) {
+            was_awake_before_disconnect = sleep_state.is_awake;
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
             LOG_DBG("Peripheral: Disconnected from central. Re-evaluating auto-off idle state.");
-            pk_underglow_auto_state(zmk_activity_get_state() == ZMK_ACTIVITY_ACTIVE);
+            pk_underglow_auto_state(false);
 #elif IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_USB)
             LOG_DBG("Peripheral: Disconnected from central. Re-evaluating auto-off usb state.");
-            pk_underglow_auto_state(zmk_usb_is_powered());
+            pk_underglow_auto_state(false);
 #endif
+        } else {
+            if (was_awake_before_disconnect) {
+                LOG_DBG("Peripheral: Reconnected and was previously awake. Waking up.");
+                pk_underglow_auto_state(true);
+            }
         }
         return ZMK_EV_EVENT_BUBBLE;
     }
@@ -933,7 +952,9 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
 
     // Apply the layer if the effect relies on it
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
-    zmk_pk_underglow_set_peripheral_layer(layer);
+    if (state_directive != 2) {
+        zmk_pk_underglow_set_peripheral_layer(layer);
+    }
 #endif
 
     // Apply the state directive
