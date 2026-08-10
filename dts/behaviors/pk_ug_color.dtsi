@@ -20,6 +20,12 @@
             display-name = "Underglow Effect BT Profile";
         };
 
+        eff_usb: pk_underglow_eff_usb {
+            compatible = "zmk,behavior-pk-underglow-eff-usb";
+            #binding-cells = <0>;
+            display-name = "Underglow Effect USB Profile";
+        };
+
         ug_nl: ugnumlk {
             compatible = "zmk,behavior-pk-underglow-indicators";
             indicator = <NUM_LOCK>;

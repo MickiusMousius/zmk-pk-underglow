@@ -14,6 +14,8 @@
 #if IS_ENABLED(CONFIG_ZMK_BLE)
 #include <zmk/ble.h>
 #endif
+#include <zmk/endpoints.h>
+#include <zmk/usb.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
@@ -35,9 +37,10 @@ static int underglow_eff_bt_process(struct zmk_behavior_binding *binding,
     bool is_selected = (zmk_ble_active_profile_index() == profile);
     bool is_connected = zmk_ble_profile_is_connected(profile);
     bool is_open = zmk_ble_profile_is_open(profile);
+    bool usb_active = (zmk_endpoints_selected().transport == ZMK_TRANSPORT_USB) && zmk_usb_is_powered();
 
-    if (!is_selected) {
-        // Not selected: Solid blue
+    if (!is_selected || usb_active) {
+        // Not selected (or USB is active & connected): Solid blue
         struct zmk_led_hsb hsb = { .h = 240, .s = 100, .b = 100 };
         return zmk_pk_underglow_hsb_to_hex(hsb);
     }
