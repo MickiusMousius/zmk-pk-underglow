@@ -62,9 +62,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 static void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup);
 #endif
 
-#define HUE_MAX 360
-#define SAT_MAX 100
-#define BRT_MAX 100
+
 
 BUILD_ASSERT(CONFIG_ZMK_PK_UNDERGLOW_BRT_MIN <= CONFIG_ZMK_PK_UNDERGLOW_BRT_MAX,
              "ERROR: RGB underglow maximum brightness is less than minimum brightness");
@@ -957,6 +955,15 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
 #endif
 
 SYS_INIT(zmk_pk_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+
+struct zmk_led_hsb zmk_pk_underglow_get_color(void) {
+    return state.color;
+}
+
+int zmk_pk_underglow_hsb_to_hex(struct zmk_led_hsb hsb) {
+    struct led_rgb rgb = hsb_to_rgb(hsb);
+    return (rgb.r << 16) | (rgb.g << 8) | rgb.b;
+}
 
 #if IS_ENABLED(CONFIG_PM_DEVICE)
 static int pk_underglow_pm_action(const struct device *dev, enum pm_device_action action) {

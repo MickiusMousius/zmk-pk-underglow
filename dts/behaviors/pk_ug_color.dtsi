@@ -8,6 +8,12 @@
             display-name = "Underglow Color";
         };
 
+        eff_hue: pk_underglow_eff_hue {
+            compatible = "zmk,behavior-pk-underglow-eff-hue";
+            #binding-cells = <1>;
+            display-name = "Underglow Effect Hue";
+        };
+
         ug_nl: ugnumlk {
             compatible = "zmk,behavior-pk-underglow-indicators";
             indicator = <NUM_LOCK>;
