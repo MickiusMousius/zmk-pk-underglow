@@ -15,6 +15,7 @@
 #include <zephyr/logging/log.h>
 
 #include <zephyr/drivers/led_strip.h>
+#include <zephyr/drivers/gpio.h>
 #include <drivers/ext_power.h>
 #include <drivers/behavior.h>
 
@@ -92,9 +93,16 @@ static const struct device *led_strip;
 static struct led_rgb pixels[STRIP_NUM_PIXELS];
 
 static struct pk_underglow_state state;
+static bool is_powered = false;
 
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_EXT_POWER)
 static const struct device *const ext_power = DEVICE_DT_GET(DT_INST(0, zmk_ext_power_generic));
+#endif
+
+#if DT_HAS_COMPAT_STATUS_OKAY(zmk_pk_underglow_layer)
+static const struct gpio_dt_spec power_gpio = GPIO_DT_SPEC_GET_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), power_gpios, {0});
+#else
+static const struct gpio_dt_spec power_gpio = {0};
 #endif
 
 static struct zmk_led_hsb hsb_scale_min_max(struct zmk_led_hsb hsb) {
@@ -308,6 +316,19 @@ static int zmk_pk_underglow_init(void) {
     }
 #endif
 
+    if (power_gpio.port != NULL) {
+        if (!gpio_is_ready_dt(&power_gpio)) {
+            LOG_ERR("Power GPIO is not ready");
+            return -ENODEV;
+        }
+        int rc = gpio_pin_configure_dt(&power_gpio, GPIO_OUTPUT_INACTIVE);
+        if (rc < 0) {
+            LOG_ERR("Failed to configure power GPIO: %d", rc);
+            return rc;
+        }
+        LOG_INF("Power GPIO configured successfully");
+    }
+
     state = (struct pk_underglow_state){
         color : {
             h : CONFIG_ZMK_PK_UNDERGLOW_HUE_START,
@@ -370,6 +391,14 @@ int zmk_pk_underglow_transient_on(void) {
     if (!led_strip)
         return -ENODEV;
 
+    state.on = true;
+    state.animation_step = 0;
+
+    if (is_powered) {
+        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(50));
+        return 0;
+    }
+
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_EXT_POWER)
     if (ext_power != NULL) {
         int rc = ext_power_enable(ext_power);
@@ -379,9 +408,17 @@ int zmk_pk_underglow_transient_on(void) {
     }
 #endif
 
-    state.on = true;
-    state.animation_step = 0;
-    k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(50));
+    if (power_gpio.port != NULL) {
+        int rc = gpio_pin_set_dt(&power_gpio, 1);
+        if (rc != 0) {
+            LOG_ERR("Failed to set power GPIO ON: %d", rc);
+        } else {
+            LOG_DBG("Power GPIO set ON");
+        }
+    }
+
+    is_powered = true;
+    k_timer_start(&underglow_tick, K_MSEC(10), K_MSEC(50));
 
     return 0;
 }
@@ -392,6 +429,28 @@ static void zmk_pk_underglow_off_handler(struct k_work *work) {
     }
 
     led_strip_update_rgb(led_strip, pixels, STRIP_NUM_PIXELS);
+
+    // Sleep briefly to ensure the transmission finishes before cutting power
+    k_sleep(K_MSEC(5));
+
+#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_EXT_POWER)
+    if (ext_power != NULL) {
+        int rc = ext_power_disable(ext_power);
+        if (rc != 0) {
+            LOG_ERR("Unable to disable EXT_POWER: %d", rc);
+        }
+    }
+#endif
+
+    if (power_gpio.port != NULL) {
+        int rc = gpio_pin_set_dt(&power_gpio, 0);
+        if (rc != 0) {
+            LOG_ERR("Failed to set power GPIO OFF: %d", rc);
+        } else {
+            LOG_DBG("Power GPIO set OFF");
+        }
+    }
+    is_powered = false;
 }
 
 K_WORK_DEFINE(underglow_off_work, zmk_pk_underglow_off_handler);
@@ -406,15 +465,9 @@ int zmk_pk_underglow_off(void) {
 int zmk_pk_underglow_transient_off(void) {
     if (!led_strip)
         return -ENODEV;
-
-#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_EXT_POWER)
-    if (ext_power != NULL) {
-        int rc = ext_power_disable(ext_power);
-        if (rc != 0) {
-            LOG_ERR("Unable to disable EXT_POWER: %d", rc);
-        }
-    }
-#endif
+        
+    if (!is_powered)
+        return 0;
 
     k_work_submit_to_queue(zmk_workqueue_lowprio_work_q(), &underglow_off_work);
 
@@ -446,7 +499,7 @@ int zmk_pk_underglow_select_effect(int effect) {
         zmk_pk_underglow_set_layer(pk_underglow_top_layer(), false);
     } else if (state.on) {
         LOG_INF("Restarting animation timer for effect %d", effect);
-        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(50));
+        zmk_pk_underglow_transient_on();
     }
 #endif
     return zmk_pk_underglow_save_state();
@@ -514,12 +567,15 @@ static void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup) {
 
     const struct zmk_behavior_binding *rgbmap = pk_underglow_get_bindings(layer);
     if (rgbmap != NULL && zmk_pk_underglow_apply_rgbmap(rgbmap, ZMK_KEYMAP_LEN, layer)) {
-        if (!state.on) {
-            if (!wakeup) {
+        if (!is_powered) {
+            if (!wakeup && !state.on) {
                 LOG_DBG("rgb off and no wakeup, abort refresh");
                 return;
             }
             zmk_pk_underglow_transient_on();
+            
+            // Allow power to stabilize before writing the first frame of pixels
+            k_sleep(K_MSEC(10));
         }
         k_timer_stop(&underglow_tick);
         state.animation_step = 0;

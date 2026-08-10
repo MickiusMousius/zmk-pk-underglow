@@ -7,6 +7,10 @@ properties:
   pixel-lookup:
     type: array
     required: true
+  power-gpios:
+    type: phandle-array
+    required: false
+    description: GPIO to toggle power for the underglow LEDs.
 
 child-binding:
   description: "A layer to be used in a rgbmap"
