@@ -61,6 +61,14 @@ config ZMK_PK_UNDERGLOW_SAT_START
 	int "ZMK_PK_UNDERGLOW_SAT_START"
 	default 100
 
+config ZMK_PK_UNDERGLOW_WHITE_SATURATION
+	int "White effect saturation level"
+	range -1 100
+	default -1
+	help
+	  Saturation level for the UNDERGLOW_EFFECT_WHITE effect (0-100).
+	  Overrides devicetree configuration if set.
+
 config ZMK_PK_UNDERGLOW_SPD_START
 	int "ZMK_PK_UNDERGLOW_SPD_START"
 	default 3

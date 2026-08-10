@@ -62,6 +62,14 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 static void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup);
 #endif
 
+#if CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION != -1
+    #define WHITE_SATURATION CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION
+#elif DT_HAS_COMPAT_STATUS_OKAY(zmk_pk_underglow_layer) && DT_NODE_HAS_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), white_saturation)
+    #define WHITE_SATURATION DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), white_saturation)
+#else
+    #define WHITE_SATURATION 0
+#endif
+
 
 
 BUILD_ASSERT(CONFIG_ZMK_PK_UNDERGLOW_BRT_MIN <= CONFIG_ZMK_PK_UNDERGLOW_BRT_MAX,
@@ -72,6 +80,7 @@ enum pk_underglow_effect {
     UNDERGLOW_EFFECT_BREATHE,
     UNDERGLOW_EFFECT_SPECTRUM,
     UNDERGLOW_EFFECT_SWIRL,
+    UNDERGLOW_EFFECT_WHITE,
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     UNDERGLOW_EFFECT_LAYER_INDICATORS,
 #endif
@@ -170,6 +179,15 @@ static void zmk_pk_underglow_effect_solid(void) {
     }
 }
 
+static void zmk_pk_underglow_effect_white(void) {
+    struct zmk_led_hsb hsb = state.color;
+    hsb.s = WHITE_SATURATION;
+    
+    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+        pixels[i] = hsb_to_rgb(hsb_scale_min_max(hsb));
+    }
+}
+
 static void zmk_pk_underglow_effect_breathe(void) {
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         struct zmk_led_hsb hsb = state.color;
@@ -253,6 +271,9 @@ static void zmk_pk_underglow_tick(struct k_work *work) {
         break;
     case UNDERGLOW_EFFECT_SWIRL:
         zmk_pk_underglow_effect_swirl();
+        break;
+    case UNDERGLOW_EFFECT_WHITE:
+        zmk_pk_underglow_effect_white();
         break;
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     case UNDERGLOW_EFFECT_LAYER_INDICATORS:

@@ -11,6 +11,10 @@ properties:
     type: phandle-array
     required: false
     description: GPIO to toggle power for the underglow LEDs.
+  white-saturation:
+    type: int
+    required: false
+    description: "Saturation level for the white effect (0-100)"
 
 child-binding:
   description: "A layer to be used in a rgbmap"
