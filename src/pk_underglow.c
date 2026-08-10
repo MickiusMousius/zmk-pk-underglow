@@ -39,6 +39,11 @@
 #include <zmk/split/central.h>
 #endif
 
+#if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+#include <zmk/events/split_peripheral_status_changed.h>
+static bool is_central_connected = false;
+#endif
+
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 #if !DT_HAS_CHOSEN(zmk_underglow)
@@ -627,6 +632,27 @@ struct pk_underglow_sleep_state {
     bool rgb_state_before_sleeping;
 };
 
+static void sync_peripheral_state(uint8_t layer, int state_directive) {
+#if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    LOG_DBG("Central: Broadcasting ug_sync with layer %d, state_directive %d", layer, state_directive);
+#if DT_HAS_COMPAT_STATUS_OKAY(zmk_behavior_pk_underglow_sync)
+    struct zmk_behavior_binding binding = {
+        .behavior_dev = DEVICE_DT_NAME(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_behavior_pk_underglow_sync)),
+        .param1 = layer,
+        .param2 = state_directive,
+    };
+    struct zmk_behavior_binding_event event = {
+        .position = 0,
+        .timestamp = k_uptime_get(),
+    };
+    for (int i = 0; i < 8; i++) {
+        zmk_split_central_invoke_behavior(i, &binding, event, true);
+        zmk_split_central_invoke_behavior(i, &binding, event, false);
+    }
+#endif
+#endif
+}
+
 static int pk_underglow_auto_state(bool target_wake_state) {
     static struct pk_underglow_sleep_state sleep_state = {
         is_awake : true,
@@ -638,6 +664,17 @@ static int pk_underglow_auto_state(bool target_wake_state) {
         return 0;
     }
     sleep_state.is_awake = target_wake_state;
+    LOG_DBG("Auto state changed. Target wake: %d. Syncing to peripheral...", target_wake_state);
+    sync_peripheral_state(pk_underglow_top_layer(), target_wake_state ? 1 : 2);
+
+#if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    LOG_DBG("Peripheral: Checking if central is connected (is_central_connected=%d)", is_central_connected);
+    if (is_central_connected) {
+        LOG_DBG("Peripheral: Central is connected, deferring auto_state to central sync.");
+        return 0;
+    }
+    LOG_DBG("Peripheral: Central NOT connected, self-managing idle state.");
+#endif
 
     if (sleep_state.is_awake) {
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
@@ -680,25 +717,8 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
         LOG_DBG("zmk_layer_state_changed: %08x", ev->state);
         uint8_t layer = pk_underglow_top_layer();
         zmk_pk_underglow_set_layer(layer, true);
+        sync_peripheral_state(layer, 0);
 
-#if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-#if DT_HAS_COMPAT_STATUS_OKAY(zmk_behavior_pk_underglow_sync)
-        struct zmk_behavior_binding binding = {
-            .behavior_dev = DEVICE_DT_NAME(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_behavior_pk_underglow_sync)),
-            .param1 = layer,
-            .param2 = 0,
-        };
-        struct zmk_behavior_binding_event event = {
-            .position = 0,
-            .timestamp = k_uptime_get(),
-        };
-        
-        for (int i = 0; i < 8; i++) {
-            zmk_split_central_invoke_behavior(i, &binding, event, true);
-            zmk_split_central_invoke_behavior(i, &binding, event, false);
-        }
-#endif
-#endif
         return ZMK_EV_EVENT_BUBBLE;
     }
 #endif
@@ -719,6 +739,24 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
     }
 #endif
 
+#if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    if (as_zmk_split_peripheral_status_changed(eh)) {
+        const struct zmk_split_peripheral_status_changed *ev = as_zmk_split_peripheral_status_changed(eh);
+        is_central_connected = ev->connected;
+        LOG_DBG("Peripheral: Split status changed. Connected: %d", is_central_connected);
+        if (!is_central_connected) {
+#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
+            LOG_DBG("Peripheral: Disconnected from central. Re-evaluating auto-off idle state.");
+            pk_underglow_auto_state(zmk_activity_get_state() == ZMK_ACTIVITY_ACTIVE);
+#elif IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_USB)
+            LOG_DBG("Peripheral: Disconnected from central. Re-evaluating auto-off usb state.");
+            pk_underglow_auto_state(zmk_usb_is_powered());
+#endif
+        }
+        return ZMK_EV_EVENT_BUBBLE;
+    }
+#endif
+
     return -ENOTSUP;
 }
 
@@ -733,6 +771,10 @@ ZMK_SUBSCRIPTION(pk_underglow, zmk_activity_state_changed);
 
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_USB)
 ZMK_SUBSCRIPTION(pk_underglow, zmk_usb_conn_state_changed);
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+ZMK_SUBSCRIPTION(pk_underglow, zmk_split_peripheral_status_changed);
 #endif
 
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)

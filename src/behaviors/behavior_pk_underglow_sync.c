@@ -23,14 +23,27 @@ static int underglow_sync_init(const struct device *dev) { return 0; };
 static int underglow_sync_process(struct zmk_behavior_binding *binding,
                                    struct zmk_behavior_binding_event event) {
 #if !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    LOG_DBG("Peripheral: Received ug_sync! param1 (layer) = %d, param2 (state_directive) = %d", binding->param1, binding->param2);
     zmk_pk_underglow_set_peripheral_layer(binding->param1);
+    
+    if (binding->param2 == 1) {
+        zmk_pk_underglow_transient_on();
+    } else if (binding->param2 == 2) {
+        zmk_pk_underglow_transient_off();
+    }
 #endif
+    return 0;
+}
+
+static int underglow_sync_released(struct zmk_behavior_binding *binding,
+                                   struct zmk_behavior_binding_event event) {
     return 0;
 }
 
 // API Structure
 static const struct behavior_driver_api underglow_sync_driver_api = {
     .binding_pressed = underglow_sync_process,
+    .binding_released = underglow_sync_released,
     .locality = BEHAVIOR_LOCALITY_GLOBAL,
 #if IS_ENABLED(CONFIG_ZMK_BEHAVIOR_METADATA)
     .get_parameter_metadata = zmk_behavior_get_empty_param_metadata,
