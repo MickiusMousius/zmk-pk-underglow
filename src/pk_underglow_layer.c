@@ -48,9 +48,9 @@ static const size_t zmk_rgbmap_ids_lens[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREAC
 static int zmk_rgbmap_fds[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, FADE_DELAY, (, ))};
 static bool zmk_rgbmap_anis[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, LAYER_ANIMATED, (, ))};
 
-const int rgb_pixel_lookup(int idx) { return pixel_lookup_table[idx]; };
+int rgb_pixel_lookup(int idx) { return pixel_lookup_table[idx]; };
 
-const int zmk_rgbmap_id(uint8_t layer) {
+int zmk_rgbmap_id(uint8_t layer) {
     for (uint8_t i = 0; i < ZMK_RGBMAP_LAYERS_LEN; i++) {
         for (size_t j = 0; j < zmk_rgbmap_ids_lens[i]; j++) {
             if (zmk_rgbmap_ids[i][j] == layer) {
@@ -61,7 +61,7 @@ const int zmk_rgbmap_id(uint8_t layer) {
     return -1;
 }
 
-const int zmk_rgbmap_fade_delay(uint8_t layer) { return zmk_rgbmap_fds[zmk_rgbmap_id(layer)]; }
+int zmk_rgbmap_fade_delay(uint8_t layer) { return zmk_rgbmap_fds[zmk_rgbmap_id(layer)]; }
 
 bool zmk_rgbmap_is_animated(uint8_t layer) { return zmk_rgbmap_anis[zmk_rgbmap_id(layer)]; }
 
@@ -75,8 +75,8 @@ const struct zmk_behavior_binding *pk_underglow_get_bindings(uint8_t layer) {
 }
 
 uint8_t pk_underglow_top_layer_with_state(uint32_t state_to_test) {
-    for (uint8_t layer = ZMK_KEYMAP_LAYERS_LEN - 1; layer > 0; layer--) {
-        if ((state_to_test & (BIT(layer))) == (BIT(layer)) || layer == 0) {
+    for (int8_t layer = ZMK_KEYMAP_LAYERS_LEN - 1; layer > 0; layer--) {
+        if (state_to_test & BIT(layer)) {
             return layer;
         }
     }
