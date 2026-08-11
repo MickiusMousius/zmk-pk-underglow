@@ -32,6 +32,9 @@
 #include <zmk/events/activity_state_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
 #include <zmk/events/underglow_color_changed.h>
+#include <zmk/events/position_state_changed.h>
+#include <zmk/events/usb_conn_state_changed.h>
+#include <zmk/events/underglow_color_changed.h>
 
 #include <zmk/workqueue.h>
 #include <zmk/events/layer_state_changed.h>
@@ -81,6 +84,7 @@ enum pk_underglow_effect {
     UNDERGLOW_EFFECT_SPECTRUM,
     UNDERGLOW_EFFECT_SWIRL,
     UNDERGLOW_EFFECT_WHITE,
+    UNDERGLOW_EFFECT_RIPPLE,
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     UNDERGLOW_EFFECT_LAYER_INDICATORS,
 #endif
@@ -95,6 +99,17 @@ struct pk_underglow_state {
     bool on;
     bool layer_enabled;
 };
+
+struct pk_ripple {
+    uint8_t row;
+    uint8_t col;
+    uint32_t start_time;
+    bool active;
+};
+
+#define MAX_RIPPLES 4
+static struct pk_ripple ripples[MAX_RIPPLES];
+static uint8_t ripple_idx = 0;
 
 static const struct device *led_strip;
 
@@ -234,6 +249,54 @@ static void zmk_pk_underglow_effect_swirl(void) {
     state.animation_step = state.animation_step % HUE_MAX;
 }
 
+static void zmk_pk_underglow_effect_ripple(void) {
+    uint32_t now = k_uptime_get_32();
+    struct zmk_led_hsb base_hsb = state.color;
+    
+    // Dim base color (10% of current brightness)
+    base_hsb.b = (base_hsb.b * 10) / 100;
+    struct led_rgb base_rgb = hsb_to_rgb(hsb_scale_min_max(base_hsb));
+    
+    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+        uint8_t midx = rgb_pixel_lookup(i);
+        int p_row = midx / 12;
+        int p_col = midx % 12;
+        
+        uint8_t peak_b = base_hsb.b;
+        
+        for (int r = 0; r < MAX_RIPPLES; r++) {
+            if (!ripples[r].active) continue;
+            uint32_t elapsed = now - ripples[r].start_time;
+            
+            // Animation speed governs how fast it expands
+            float speed_factor = state.animation_speed * 0.3f; 
+            float current_radius = (float)elapsed * speed_factor / 100.0f;
+            float max_radius = 12.0f; // Max distance across one half of keyboard
+            
+            if (current_radius > max_radius) {
+                ripples[r].active = false;
+                continue;
+            }
+            
+            float dist = sqrtf(powf(p_row - ripples[r].row, 2) + powf(p_col - ripples[r].col, 2));
+            float thickness = 2.0f;
+            float dist_from_ring = fabsf(current_radius - dist);
+            
+            if (dist_from_ring < thickness) {
+                float intensity = 1.0f - (dist_from_ring / thickness);
+                float fade = 1.0f - (current_radius / max_radius);
+                
+                uint8_t ripple_b = (uint8_t)(state.color.b * intensity * fade);
+                if (ripple_b > peak_b) peak_b = ripple_b;
+            }
+        }
+        
+        struct zmk_led_hsb pixel_hsb = state.color;
+        pixel_hsb.b = peak_b;
+        pixels[i] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
+    }
+}
+
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 static int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings,
                                          size_t bindings_len, uint8_t layer);
@@ -281,6 +344,9 @@ static void zmk_pk_underglow_tick(struct k_work *work) {
         break;
     case UNDERGLOW_EFFECT_WHITE:
         zmk_pk_underglow_effect_white();
+        break;
+    case UNDERGLOW_EFFECT_RIPPLE:
+        zmk_pk_underglow_effect_ripple();
         break;
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     case UNDERGLOW_EFFECT_LAYER_INDICATORS:
@@ -915,6 +981,22 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
     }
 #endif /* UNDERGLOW_LAYER_ENABLED */
 
+    if (as_zmk_position_state_changed(eh)) {
+        if (state.on && state.current_effect == UNDERGLOW_EFFECT_RIPPLE) {
+            const struct zmk_position_state_changed *ev = as_zmk_position_state_changed(eh);
+            if (ev->state && ev->source == ZMK_POSITION_STATE_CHANGE_SOURCE_LOCAL) {
+                uint8_t row = ev->position / 12;
+                uint8_t col = ev->position % 12;
+                ripples[ripple_idx].row = row;
+                ripples[ripple_idx].col = col;
+                ripples[ripple_idx].start_time = k_uptime_get_32();
+                ripples[ripple_idx].active = true;
+                ripple_idx = (ripple_idx + 1) % MAX_RIPPLES;
+            }
+        }
+        return ZMK_EV_EVENT_BUBBLE;
+    }
+
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_USB)
     if (as_zmk_usb_conn_state_changed(eh)) {
         return pk_underglow_auto_state(zmk_usb_is_powered());
@@ -957,6 +1039,8 @@ ZMK_LISTENER(pk_underglow, pk_underglow_event_listener);
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
 ZMK_SUBSCRIPTION(pk_underglow, zmk_activity_state_changed);
 #endif
+
+ZMK_SUBSCRIPTION(pk_underglow, zmk_position_state_changed);
 
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_USB)
 ZMK_SUBSCRIPTION(pk_underglow, zmk_usb_conn_state_changed);
