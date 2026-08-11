@@ -85,6 +85,7 @@ enum pk_underglow_effect {
     UNDERGLOW_EFFECT_SWIRL,
     UNDERGLOW_EFFECT_WHITE,
     UNDERGLOW_EFFECT_RIPPLE,
+    UNDERGLOW_EFFECT_RAINBOW_RIPPLE,
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     UNDERGLOW_EFFECT_LAYER_INDICATORS,
 #endif
@@ -104,12 +105,16 @@ struct pk_ripple {
     uint8_t row;
     uint8_t col;
     uint32_t start_time;
+    uint16_t hue;
     bool active;
 };
 
 #define MAX_RIPPLES 4
 static struct pk_ripple ripples[MAX_RIPPLES];
 static uint8_t ripple_idx = 0;
+
+static uint16_t global_rainbow_hue = 0;
+static uint16_t pixel_base_hues[STRIP_NUM_PIXELS];
 
 static const struct device *led_strip;
 
@@ -297,6 +302,62 @@ static void zmk_pk_underglow_effect_ripple(void) {
     }
 }
 
+static void zmk_pk_underglow_effect_rainbow_ripple(void) {
+    uint32_t now = k_uptime_get_32();
+    struct zmk_led_hsb base_hsb = state.color;
+    
+    // Global rainbow hue updates on every tick like the spectrum effect
+    global_rainbow_hue = (global_rainbow_hue + state.animation_speed) % HUE_MAX;
+    
+    // Dim base color (10% of current brightness)
+    base_hsb.b = (base_hsb.b * 10) / 100;
+    
+    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+        uint8_t midx = rgb_pixel_lookup(i);
+        int p_row = midx / 12;
+        int p_col = midx % 12;
+        
+        uint8_t peak_b = base_hsb.b;
+        uint16_t peak_hue = pixel_base_hues[i]; // Default to the LED's stored base hue
+        
+        for (int r = 0; r < MAX_RIPPLES; r++) {
+            if (!ripples[r].active) continue;
+            uint32_t elapsed = now - ripples[r].start_time;
+            
+            // Animation speed governs how fast it expands
+            float speed_factor = state.animation_speed * 0.3f; 
+            float current_radius = (float)elapsed * speed_factor / 100.0f;
+            float max_radius = 12.0f; // Max distance across one half of keyboard
+            
+            if (current_radius > max_radius) {
+                ripples[r].active = false;
+                continue;
+            }
+            
+            float dist = sqrtf(powf(p_row - ripples[r].row, 2) + powf(p_col - ripples[r].col, 2));
+            float thickness = 2.0f;
+            float dist_from_ring = fabsf(current_radius - dist);
+            
+            if (dist_from_ring < thickness) {
+                float intensity = 1.0f - (dist_from_ring / thickness);
+                float fade = 1.0f - (current_radius / max_radius);
+                
+                uint8_t ripple_b = (uint8_t)(state.color.b * intensity * fade);
+                if (ripple_b > peak_b) {
+                    peak_b = ripple_b;
+                    peak_hue = ripples[r].hue; // Absorb the wave's hue
+                    pixel_base_hues[i] = ripples[r].hue; // Store the hue persistently
+                }
+            }
+        }
+        
+        struct zmk_led_hsb pixel_hsb = state.color;
+        pixel_hsb.h = peak_hue;
+        pixel_hsb.b = peak_b;
+        pixels[i] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
+    }
+}
+
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 static int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings,
                                          size_t bindings_len, uint8_t layer);
@@ -347,6 +408,9 @@ static void zmk_pk_underglow_tick(struct k_work *work) {
         break;
     case UNDERGLOW_EFFECT_RIPPLE:
         zmk_pk_underglow_effect_ripple();
+        break;
+    case UNDERGLOW_EFFECT_RAINBOW_RIPPLE:
+        zmk_pk_underglow_effect_rainbow_ripple();
         break;
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     case UNDERGLOW_EFFECT_LAYER_INDICATORS:
@@ -595,6 +659,14 @@ int zmk_pk_underglow_select_effect(int effect) {
 
     state.current_effect = effect;
     state.animation_step = 0;
+    
+    if (effect == UNDERGLOW_EFFECT_RAINBOW_RIPPLE) {
+        global_rainbow_hue = state.color.h;
+        for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+            pixel_base_hues[i] = state.color.h;
+        }
+    }
+
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     state.layer_enabled = (effect == UNDERGLOW_EFFECT_LAYER_INDICATORS);
 
@@ -982,7 +1054,7 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
 #endif /* UNDERGLOW_LAYER_ENABLED */
 
     if (as_zmk_position_state_changed(eh)) {
-        if (state.on && state.current_effect == UNDERGLOW_EFFECT_RIPPLE) {
+        if (state.on && (state.current_effect == UNDERGLOW_EFFECT_RIPPLE || state.current_effect == UNDERGLOW_EFFECT_RAINBOW_RIPPLE)) {
             const struct zmk_position_state_changed *ev = as_zmk_position_state_changed(eh);
             if (ev->state && ev->source == ZMK_POSITION_STATE_CHANGE_SOURCE_LOCAL) {
                 uint8_t row = ev->position / 12;
@@ -990,6 +1062,7 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
                 ripples[ripple_idx].row = row;
                 ripples[ripple_idx].col = col;
                 ripples[ripple_idx].start_time = k_uptime_get_32();
+                ripples[ripple_idx].hue = (state.current_effect == UNDERGLOW_EFFECT_RAINBOW_RIPPLE) ? global_rainbow_hue : state.color.h;
                 ripples[ripple_idx].active = true;
                 ripple_idx = (ripple_idx + 1) % MAX_RIPPLES;
             }
