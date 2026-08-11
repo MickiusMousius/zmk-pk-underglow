@@ -15,5 +15,6 @@
 #define GOLD 0xffd700
 #define PURPLE 0x800080
 #define PINK 0xffc0cb
+#define CYAN 0x00ffff
 #define WHITE 0xffffff
 #define BLACK 0x000000

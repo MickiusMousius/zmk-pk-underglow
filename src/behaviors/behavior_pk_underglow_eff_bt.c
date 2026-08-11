@@ -25,13 +25,13 @@ static int underglow_eff_bt_init(const struct device *dev) { return 0; };
 
 static int underglow_eff_bt_process(struct zmk_behavior_binding *binding,
                                      struct zmk_behavior_binding_event event) {
-    uint8_t profile = binding->param1;
-
 #if (IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)) || !IS_ENABLED(CONFIG_ZMK_BLE)
     // Peripheral half does not track BT profile status of central, fallback to solid blue
     struct zmk_led_hsb hsb = { .h = 240, .s = 100, .b = 100 };
     return zmk_pk_underglow_hsb_to_hex(hsb);
 #else
+    uint8_t profile = binding->param1;
+
     uint64_t uptime = event.timestamp;
     
     bool is_selected = (zmk_ble_active_profile_index() == profile);

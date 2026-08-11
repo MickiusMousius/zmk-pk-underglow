@@ -1,9 +1,0 @@
-description: Set underglow color based on battery level
-
-compatible: "zmk,behavior-pk-underglow-battery"
-
-include: two_param.yaml
-
-properties:
-  threshold:
-    type: int
