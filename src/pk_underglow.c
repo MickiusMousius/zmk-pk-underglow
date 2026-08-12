@@ -714,7 +714,9 @@ static int rgb_settings_set(const char *name, size_t len, settings_read_cb read_
         rc = read_cb(cb_arg, &state, sizeof(state));
         if (rc >= 0) {
             if (state.on) {
-                k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(67));
+                zmk_pk_underglow_transient_on();
+            } else {
+                zmk_pk_underglow_transient_off();
             }
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
             if (state.layer_enabled) {
@@ -808,7 +810,7 @@ static int zmk_pk_underglow_init(void) {
 #endif
 
     if (state.on) {
-        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(67));
+        zmk_pk_underglow_transient_on();
     }
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state.layer_enabled) {
