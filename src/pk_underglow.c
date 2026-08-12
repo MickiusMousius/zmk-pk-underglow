@@ -89,6 +89,7 @@ enum pk_underglow_effect {
     UNDERGLOW_EFFECT_RAINBOW_RIPPLE,
     UNDERGLOW_EFFECT_TWINKLE,
     UNDERGLOW_EFFECT_RAINBOW_TWINKLE,
+    UNDERGLOW_EFFECT_PINWHEEL,
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     UNDERGLOW_EFFECT_LAYER_INDICATORS,
 #endif
@@ -126,6 +127,9 @@ static uint16_t pixel_base_hues[STRIP_NUM_PIXELS];
 #ifndef CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS
 #define CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS 5
 #endif
+
+static float center_row = 0.0f;
+static float center_col = 0.0f;
 
 struct pk_twinkle {
     uint8_t led_index;
@@ -492,6 +496,35 @@ static void zmk_pk_underglow_effect_rainbow_twinkle(void) {
     }
 }
 
+static void zmk_pk_underglow_effect_pinwheel(void) {
+    // Increment the animation step to make it spin!
+    // 0.5 revs/sec at max speed (5) = 180 degrees/sec.
+    // Timer runs at ~15 ticks/sec (67ms). 180 / 15 = 12 degrees/tick.
+    state.animation_step += (state.animation_speed * 12) / 5;
+    state.animation_step = state.animation_step % HUE_MAX;
+    
+    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+        uint8_t midx = rgb_pixel_lookup(i);
+        int p_row = midx / 12;
+        int p_col = midx % 12;
+        
+        float theta = atan2f((float)p_row - center_row, (float)p_col - center_col);
+        
+        uint16_t angle_hue = (uint16_t)(((theta + 3.14159265f) / (2.0f * 3.14159265f)) * HUE_MAX);
+        
+        struct zmk_led_hsb pixel_hsb = state.color;
+        // The spinning effect comes from animation_step, which increments continuously
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
+        pixel_hsb.h = (angle_hue + state.animation_step) % HUE_MAX;
+#else
+        // Spin in opposite direction on the peripheral side
+        pixel_hsb.h = (angle_hue + HUE_MAX - (state.animation_step % HUE_MAX)) % HUE_MAX;
+#endif
+        
+        pixels[i] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
+    }
+}
+
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 static int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings,
                                          size_t bindings_len, uint8_t layer);
@@ -551,6 +584,9 @@ static void zmk_pk_underglow_tick(struct k_work *work) {
         break;
     case UNDERGLOW_EFFECT_RAINBOW_TWINKLE:
         zmk_pk_underglow_effect_rainbow_twinkle();
+        break;
+    case UNDERGLOW_EFFECT_PINWHEEL:
+        zmk_pk_underglow_effect_pinwheel();
         break;
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     case UNDERGLOW_EFFECT_LAYER_INDICATORS:
@@ -616,6 +652,31 @@ static struct k_work_delayable underglow_save_work;
 #endif
 
 static int zmk_pk_underglow_init(void) {
+    int min_row = 999, max_row = -1;
+    int min_col = 999, max_col = -1;
+
+    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+        uint8_t midx = rgb_pixel_lookup(i);
+        int r = midx / 12;
+        int c = midx % 12;
+        if (r < min_row) min_row = r;
+        if (r > max_row) max_row = r;
+        if (c < min_col) min_col = c;
+        if (c > max_col) max_col = c;
+    }
+
+    if (STRIP_NUM_PIXELS > 0) {
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
+        // Central side (or unibody): Top Left
+        center_row = (float)min_row;
+        center_col = (float)min_col;
+#else
+        // Peripheral side: Top Right
+        center_row = (float)min_row;
+        center_col = (float)max_col;
+#endif
+    }
+
     led_strip = DEVICE_DT_GET(STRIP_CHOSEN);
 
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_EXT_POWER)
