@@ -12,6 +12,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <zephyr/random/random.h>
 
 #include <zephyr/logging/log.h>
 
@@ -86,6 +87,8 @@ enum pk_underglow_effect {
     UNDERGLOW_EFFECT_WHITE,
     UNDERGLOW_EFFECT_RIPPLE,
     UNDERGLOW_EFFECT_RAINBOW_RIPPLE,
+    UNDERGLOW_EFFECT_TWINKLE,
+    UNDERGLOW_EFFECT_RAINBOW_TWINKLE,
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     UNDERGLOW_EFFECT_LAYER_INDICATORS,
 #endif
@@ -115,6 +118,31 @@ static uint8_t ripple_idx = 0;
 
 static uint16_t global_rainbow_hue = 0;
 static uint16_t pixel_base_hues[STRIP_NUM_PIXELS];
+
+#ifndef CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX
+#define CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX 5
+#endif
+
+#ifndef CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS
+#define CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS 5
+#endif
+
+struct pk_twinkle {
+    uint8_t led_index;
+    uint32_t start_time;
+    uint16_t duration;
+    uint16_t hue;
+    bool active;
+};
+
+static struct pk_twinkle twinkles[CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX];
+
+static const uint8_t twinkle_lut[32] = {
+    0, 1, 3, 6, 10, 15, 22, 31,
+    41, 53, 65, 77, 87, 94, 98, 100,
+    100, 98, 94, 87, 77, 65, 53, 41,
+    31, 22, 15, 10, 6, 3, 1, 0
+};
 
 static const struct device *led_strip;
 
@@ -258,8 +286,8 @@ static void zmk_pk_underglow_effect_ripple(void) {
     uint32_t now = k_uptime_get_32();
     struct zmk_led_hsb base_hsb = state.color;
     
-    // Dim base color (10% of current brightness)
-    base_hsb.b = (base_hsb.b * 10) / 100;
+    // Dim base color
+    base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
     struct led_rgb base_rgb = hsb_to_rgb(hsb_scale_min_max(base_hsb));
     
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
@@ -309,8 +337,8 @@ static void zmk_pk_underglow_effect_rainbow_ripple(void) {
     // Global rainbow hue updates on every tick like the spectrum effect
     global_rainbow_hue = (global_rainbow_hue + state.animation_speed) % HUE_MAX;
     
-    // Dim base color (10% of current brightness)
-    base_hsb.b = (base_hsb.b * 10) / 100;
+    // Dim base color
+    base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
     
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         uint8_t midx = rgb_pixel_lookup(i);
@@ -355,6 +383,113 @@ static void zmk_pk_underglow_effect_rainbow_ripple(void) {
         pixel_hsb.h = peak_hue;
         pixel_hsb.b = peak_b;
         pixels[i] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
+    }
+}
+
+static void zmk_pk_underglow_effect_twinkle(void) {
+    uint32_t now = k_uptime_get_32();
+    struct zmk_led_hsb base_hsb = state.color;
+    
+    // Dim base color
+    base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
+    struct led_rgb base_rgb = hsb_to_rgb(hsb_scale_min_max(base_hsb));
+    
+    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+        pixels[i] = base_rgb;
+    }
+    
+    for (int i = 0; i < CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX; i++) {
+        if (!twinkles[i].active) {
+            // Randomly start a new twinkle
+            // But don't do it all at once; only start if random chance allows, to stagger them
+            if ((sys_rand32_get() % 100) < 5) {
+                twinkles[i].led_index = sys_rand32_get() % STRIP_NUM_PIXELS;
+                twinkles[i].start_time = now;
+                // Duration inversely related to animation_speed. Max speed (5) -> short duration.
+                // 1000ms / speed + random offset
+                twinkles[i].duration = (2000 / state.animation_speed) + (sys_rand32_get() % 1000);
+                twinkles[i].active = true;
+            }
+            continue;
+        }
+        
+        uint32_t elapsed = now - twinkles[i].start_time;
+        if (elapsed >= twinkles[i].duration) {
+            twinkles[i].active = false;
+            continue;
+        }
+        
+        uint32_t lut_index = (elapsed * 32) / twinkles[i].duration;
+        if (lut_index > 31) lut_index = 31;
+        
+        uint8_t added_b = twinkle_lut[lut_index];
+        uint8_t twinkle_b = CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS + (added_b * (100 - CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS)) / 100;
+        
+        // Scale to global brightness
+        twinkle_b = (uint8_t)((state.color.b * twinkle_b) / 100);
+        
+        struct zmk_led_hsb pixel_hsb = state.color;
+        pixel_hsb.b = twinkle_b;
+        
+        pixels[twinkles[i].led_index] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
+    }
+}
+
+static void zmk_pk_underglow_effect_rainbow_twinkle(void) {
+    uint32_t now = k_uptime_get_32();
+    struct zmk_led_hsb base_hsb = state.color;
+    
+    // Global rainbow hue updates on every tick like the spectrum effect
+    global_rainbow_hue = (global_rainbow_hue + state.animation_speed) % HUE_MAX;
+    
+    // Dim base color and apply the dynamic rainbow hue
+    base_hsb.h = global_rainbow_hue;
+    base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
+    struct led_rgb base_rgb = hsb_to_rgb(hsb_scale_min_max(base_hsb));
+    
+    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+        pixels[i] = base_rgb;
+    }
+    
+    for (int i = 0; i < CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX; i++) {
+        if (!twinkles[i].active) {
+            // Randomly start a new twinkle
+            if ((sys_rand32_get() % 100) < 5) {
+                twinkles[i].led_index = sys_rand32_get() % STRIP_NUM_PIXELS;
+                twinkles[i].start_time = now;
+                twinkles[i].duration = (2000 / state.animation_speed) + (sys_rand32_get() % 1000);
+                twinkles[i].hue = global_rainbow_hue; // Capture the current ambient hue
+                twinkles[i].active = true;
+            }
+            continue;
+        }
+        
+        uint32_t elapsed = now - twinkles[i].start_time;
+        if (elapsed >= twinkles[i].duration) {
+            twinkles[i].active = false;
+            continue;
+        }
+        
+        uint32_t lut_index = (elapsed * 32) / twinkles[i].duration;
+        if (lut_index > 31) lut_index = 31;
+        
+        uint8_t added_b = twinkle_lut[lut_index];
+        uint8_t twinkle_b = CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS + (added_b * (100 - CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS)) / 100;
+        
+        // If the added brightness is essentially 0, it means the star is at the ambient level.
+        // It should assume the background color (which we painted in the loop above).
+        if (added_b == 0) {
+            continue;
+        }
+        
+        struct zmk_led_hsb pixel_hsb = state.color;
+        pixel_hsb.h = twinkles[i].hue; // Use the star's captured hue
+        
+        // Scale to global brightness
+        twinkle_b = (uint8_t)((state.color.b * twinkle_b) / 100);
+        pixel_hsb.b = twinkle_b;
+        
+        pixels[twinkles[i].led_index] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
     }
 }
 
@@ -411,6 +546,12 @@ static void zmk_pk_underglow_tick(struct k_work *work) {
         break;
     case UNDERGLOW_EFFECT_RAINBOW_RIPPLE:
         zmk_pk_underglow_effect_rainbow_ripple();
+        break;
+    case UNDERGLOW_EFFECT_TWINKLE:
+        zmk_pk_underglow_effect_twinkle();
+        break;
+    case UNDERGLOW_EFFECT_RAINBOW_TWINKLE:
+        zmk_pk_underglow_effect_rainbow_twinkle();
         break;
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     case UNDERGLOW_EFFECT_LAYER_INDICATORS:
@@ -660,10 +801,16 @@ int zmk_pk_underglow_select_effect(int effect) {
     state.current_effect = effect;
     state.animation_step = 0;
     
-    if (effect == UNDERGLOW_EFFECT_RAINBOW_RIPPLE) {
+    if (effect == UNDERGLOW_EFFECT_RAINBOW_RIPPLE || effect == UNDERGLOW_EFFECT_RAINBOW_TWINKLE) {
         global_rainbow_hue = state.color.h;
         for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
             pixel_base_hues[i] = state.color.h;
+        }
+    }
+    
+    if (effect == UNDERGLOW_EFFECT_TWINKLE || effect == UNDERGLOW_EFFECT_RAINBOW_TWINKLE) {
+        for (int i = 0; i < CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX; i++) {
+            twinkles[i].active = false;
         }
     }
 

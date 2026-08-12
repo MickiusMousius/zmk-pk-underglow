@@ -69,6 +69,19 @@ config ZMK_PK_UNDERGLOW_WHITE_SATURATION
 	  Saturation level for the UNDERGLOW_EFFECT_WHITE effect (0-100).
 	  Overrides devicetree configuration if set.
 
+config ZMK_PK_UNDERGLOW_TWINKLE_MAX
+	int "ZMK_PK_UNDERGLOW_TWINKLE_MAX"
+	default 5
+	help
+	  Maximum number of concurrent twinkling stars for the UNDERGLOW_EFFECT_TWINKLE effect.
+
+config ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS
+	int "ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS"
+	range 0 100
+	default 5
+	help
+	  The background brightness percentage (0-100) for reactive effects like Ripple and Twinkle.
+
 config ZMK_PK_UNDERGLOW_SPD_START
 	int "ZMK_PK_UNDERGLOW_SPD_START"
 	default 3
