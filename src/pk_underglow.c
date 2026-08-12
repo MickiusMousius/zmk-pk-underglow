@@ -41,6 +41,9 @@
 #include <zmk/events/layer_state_changed.h>
 #include <zmk/pk_split_sync.h>
 
+#include <zmk/endpoints.h>
+#include <zmk/events/endpoint_changed.h>
+
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 #include <zmk/split/central.h>
 #endif
@@ -98,9 +101,9 @@ enum pk_underglow_effect {
 };
 
 struct pk_underglow_state {
-    struct zmk_led_hsb color;
+    struct zmk_led_hsb colors[ZMK_ENDPOINT_COUNT];
+    uint8_t current_effects[ZMK_ENDPOINT_COUNT];
     uint8_t effect_speeds[UNDERGLOW_EFFECT_NUMBER];
-    uint8_t current_effect;
     uint16_t animation_step;
     bool on;
     bool layer_enabled;
@@ -242,6 +245,22 @@ static const struct device *led_strip;
 static struct led_rgb pixels[STRIP_NUM_PIXELS];
 
 static struct pk_underglow_state state;
+
+static uint8_t active_profile_index = 0;
+
+static uint8_t get_active_profile(void) {
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
+    struct zmk_endpoint_instance endpoint = zmk_endpoints_selected();
+    int index = zmk_endpoint_instance_to_index(endpoint);
+    if (index < 0 || index >= ZMK_ENDPOINT_COUNT) {
+        return 0;
+    }
+    return (uint8_t)index;
+#else
+    return 0;
+#endif
+}
+
 static bool is_powered = false;
 
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_EXT_POWER)
@@ -315,14 +334,14 @@ static struct led_rgb hsb_to_rgb(struct zmk_led_hsb hsb) {
 }
 
 static void zmk_pk_underglow_effect_solid(void) {
-    struct led_rgb rgb = hsb_to_rgb(hsb_scale_min_max(state.color));
+    struct led_rgb rgb = hsb_to_rgb(hsb_scale_min_max(state.colors[active_profile_index]));
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         pixels[i] = rgb;
     }
 }
 
 static void zmk_pk_underglow_effect_white(void) {
-    struct zmk_led_hsb hsb = state.color;
+    struct zmk_led_hsb hsb = state.colors[active_profile_index];
     hsb.s = WHITE_SATURATION;
     struct led_rgb rgb = hsb_to_rgb(hsb_scale_min_max(hsb));
     
@@ -332,7 +351,7 @@ static void zmk_pk_underglow_effect_white(void) {
 }
 
 static void zmk_pk_underglow_effect_breathe(void) {
-    struct zmk_led_hsb hsb = state.color;
+    struct zmk_led_hsb hsb = state.colors[active_profile_index];
     hsb.b = abs(state.animation_step - 1200) / 12;
     struct led_rgb rgb = hsb_to_rgb(hsb_scale_zero_max(hsb));
 
@@ -340,7 +359,7 @@ static void zmk_pk_underglow_effect_breathe(void) {
         pixels[i] = rgb;
     }
 
-    state.animation_step += state.effect_speeds[state.current_effect] * 13;
+    state.animation_step += state.effect_speeds[state.current_effects[active_profile_index]] * 13;
 
     if (state.animation_step > 2400) {
         state.animation_step = 0;
@@ -348,7 +367,7 @@ static void zmk_pk_underglow_effect_breathe(void) {
 }
 
 static void zmk_pk_underglow_effect_spectrum(void) {
-    struct zmk_led_hsb hsb = state.color;
+    struct zmk_led_hsb hsb = state.colors[active_profile_index];
     hsb.h = state.animation_step;
     struct led_rgb rgb = hsb_to_rgb(hsb_scale_min_max(hsb));
 
@@ -356,12 +375,12 @@ static void zmk_pk_underglow_effect_spectrum(void) {
         pixels[i] = rgb;
     }
 
-    state.animation_step += state.effect_speeds[state.current_effect];
+    state.animation_step += state.effect_speeds[state.current_effects[active_profile_index]];
     state.animation_step = state.animation_step % HUE_MAX;
 }
 
 static void zmk_pk_underglow_effect_swirl(void) {
-    struct zmk_led_hsb base_hsb = state.color;
+    struct zmk_led_hsb base_hsb = state.colors[active_profile_index];
     const uint16_t hue_step = HUE_MAX / STRIP_NUM_PIXELS;
 
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
@@ -371,13 +390,13 @@ static void zmk_pk_underglow_effect_swirl(void) {
         pixels[i] = hsb_to_rgb(hsb_scale_min_max(hsb));
     }
 
-    state.animation_step += state.effect_speeds[state.current_effect] * 3;
+    state.animation_step += state.effect_speeds[state.current_effects[active_profile_index]] * 3;
     state.animation_step = state.animation_step % HUE_MAX;
 }
 
 static void zmk_pk_underglow_effect_ripple(void) {
     uint32_t now = k_uptime_get_32();
-    struct zmk_led_hsb base_hsb = state.color;
+    struct zmk_led_hsb base_hsb = state.colors[active_profile_index];
     
     // Dim base color
     base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
@@ -395,7 +414,7 @@ static void zmk_pk_underglow_effect_ripple(void) {
             uint32_t elapsed = now - ripples[r].start_time;
             
             // Animation speed governs how fast it expands
-            float speed_factor = state.effect_speeds[state.current_effect] * 0.6f; 
+            float speed_factor = state.effect_speeds[state.current_effects[active_profile_index]] * 0.6f; 
             float current_radius = (float)elapsed * speed_factor / 100.0f;
             float max_radius = 12.0f; // Max distance across one half of keyboard
             
@@ -412,12 +431,12 @@ static void zmk_pk_underglow_effect_ripple(void) {
                 float intensity = 1.0f - (dist_from_ring / thickness);
                 float fade = 1.0f - (current_radius / max_radius);
                 
-                uint8_t ripple_b = (uint8_t)(state.color.b * intensity * fade);
+                uint8_t ripple_b = (uint8_t)(state.colors[active_profile_index].b * intensity * fade);
                 if (ripple_b > peak_b) peak_b = ripple_b;
             }
         }
         
-        struct zmk_led_hsb pixel_hsb = state.color;
+        struct zmk_led_hsb pixel_hsb = state.colors[active_profile_index];
         pixel_hsb.b = peak_b;
         pixels[i] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
     }
@@ -425,10 +444,10 @@ static void zmk_pk_underglow_effect_ripple(void) {
 
 static void zmk_pk_underglow_effect_rainbow_ripple(void) {
     uint32_t now = k_uptime_get_32();
-    struct zmk_led_hsb base_hsb = state.color;
+    struct zmk_led_hsb base_hsb = state.colors[active_profile_index];
     
     // Global rainbow hue updates on every tick like the spectrum effect
-    global_rainbow_hue = (global_rainbow_hue + state.effect_speeds[state.current_effect]) % HUE_MAX;
+    global_rainbow_hue = (global_rainbow_hue + state.effect_speeds[state.current_effects[active_profile_index]]) % HUE_MAX;
     
     // Dim base color
     base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
@@ -446,7 +465,7 @@ static void zmk_pk_underglow_effect_rainbow_ripple(void) {
             uint32_t elapsed = now - ripples[r].start_time;
             
             // Animation speed governs how fast it expands
-            float speed_factor = state.effect_speeds[state.current_effect] * 0.6f; 
+            float speed_factor = state.effect_speeds[state.current_effects[active_profile_index]] * 0.6f; 
             float current_radius = (float)elapsed * speed_factor / 100.0f;
             float max_radius = 12.0f; // Max distance across one half of keyboard
             
@@ -463,7 +482,7 @@ static void zmk_pk_underglow_effect_rainbow_ripple(void) {
                 float intensity = 1.0f - (dist_from_ring / thickness);
                 float fade = 1.0f - (current_radius / max_radius);
                 
-                uint8_t ripple_b = (uint8_t)(state.color.b * intensity * fade);
+                uint8_t ripple_b = (uint8_t)(state.colors[active_profile_index].b * intensity * fade);
                 if (ripple_b > peak_b) {
                     peak_b = ripple_b;
                     peak_hue = ripples[r].hue; // Absorb the wave's hue
@@ -472,7 +491,7 @@ static void zmk_pk_underglow_effect_rainbow_ripple(void) {
             }
         }
         
-        struct zmk_led_hsb pixel_hsb = state.color;
+        struct zmk_led_hsb pixel_hsb = state.colors[active_profile_index];
         pixel_hsb.h = peak_hue;
         pixel_hsb.b = peak_b;
         pixels[i] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
@@ -481,7 +500,7 @@ static void zmk_pk_underglow_effect_rainbow_ripple(void) {
 
 static void zmk_pk_underglow_effect_twinkle(void) {
     uint32_t now = k_uptime_get_32();
-    struct zmk_led_hsb base_hsb = state.color;
+    struct zmk_led_hsb base_hsb = state.colors[active_profile_index];
     
     // Dim base color
     base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
@@ -499,7 +518,7 @@ static void zmk_pk_underglow_effect_twinkle(void) {
                 twinkles[i].led_index = sys_rand32_get() % STRIP_NUM_PIXELS;
                 twinkles[i].start_time = now;
                 // 2000ms / speed + random offset (doubled from original)
-                twinkles[i].duration = (4000 / state.effect_speeds[state.current_effect]) + (sys_rand32_get() % 2000);
+                twinkles[i].duration = (4000 / state.effect_speeds[state.current_effects[active_profile_index]]) + (sys_rand32_get() % 2000);
                 twinkles[i].active = true;
             }
             continue;
@@ -518,9 +537,9 @@ static void zmk_pk_underglow_effect_twinkle(void) {
         uint8_t twinkle_b = CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS + (added_b * (100 - CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS)) / 100;
         
         // Scale to global brightness
-        twinkle_b = (uint8_t)((state.color.b * twinkle_b) / 100);
+        twinkle_b = (uint8_t)((state.colors[active_profile_index].b * twinkle_b) / 100);
         
-        struct zmk_led_hsb pixel_hsb = state.color;
+        struct zmk_led_hsb pixel_hsb = state.colors[active_profile_index];
         pixel_hsb.b = twinkle_b;
         
         pixels[twinkles[i].led_index] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
@@ -529,10 +548,10 @@ static void zmk_pk_underglow_effect_twinkle(void) {
 
 static void zmk_pk_underglow_effect_rainbow_twinkle(void) {
     uint32_t now = k_uptime_get_32();
-    struct zmk_led_hsb base_hsb = state.color;
+    struct zmk_led_hsb base_hsb = state.colors[active_profile_index];
     
     // Global rainbow hue updates on every tick like the spectrum effect
-    global_rainbow_hue = (global_rainbow_hue + state.effect_speeds[state.current_effect]) % HUE_MAX;
+    global_rainbow_hue = (global_rainbow_hue + state.effect_speeds[state.current_effects[active_profile_index]]) % HUE_MAX;
     
     // Dim base color and apply the dynamic rainbow hue
     base_hsb.h = global_rainbow_hue;
@@ -549,7 +568,7 @@ static void zmk_pk_underglow_effect_rainbow_twinkle(void) {
             if ((sys_rand32_get() % 100) < 5) {
                 twinkles[i].led_index = sys_rand32_get() % STRIP_NUM_PIXELS;
                 twinkles[i].start_time = now;
-                twinkles[i].duration = (4000 / state.effect_speeds[state.current_effect]) + (sys_rand32_get() % 2000);
+                twinkles[i].duration = (4000 / state.effect_speeds[state.current_effects[active_profile_index]]) + (sys_rand32_get() % 2000);
                 twinkles[i].hue = global_rainbow_hue; // Capture the current ambient hue
                 twinkles[i].active = true;
             }
@@ -574,11 +593,11 @@ static void zmk_pk_underglow_effect_rainbow_twinkle(void) {
             continue;
         }
         
-        struct zmk_led_hsb pixel_hsb = state.color;
+        struct zmk_led_hsb pixel_hsb = state.colors[active_profile_index];
         pixel_hsb.h = twinkles[i].hue; // Use the star's captured hue
         
         // Scale to global brightness
-        twinkle_b = (uint8_t)((state.color.b * twinkle_b) / 100);
+        twinkle_b = (uint8_t)((state.colors[active_profile_index].b * twinkle_b) / 100);
         pixel_hsb.b = twinkle_b;
         
         pixels[twinkles[i].led_index] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
@@ -589,7 +608,7 @@ static void zmk_pk_underglow_effect_pinwheel(void) {
     // Increment the animation step to make it spin!
     // 0.5 revs/sec at max speed (5) = 180 degrees/sec.
     // Timer runs at ~15 ticks/sec (67ms). 180 / 15 = 12 degrees/tick.
-    state.animation_step += (state.effect_speeds[state.current_effect] * 12) / 5;
+    state.animation_step += (state.effect_speeds[state.current_effects[active_profile_index]] * 12) / 5;
     state.animation_step = state.animation_step % HUE_MAX;
     
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
@@ -601,7 +620,7 @@ static void zmk_pk_underglow_effect_pinwheel(void) {
         int dc = p_col - (int)center_col;
         uint16_t angle_hue = pk_get_pinwheel_angle(dr, dc);
         
-        struct zmk_led_hsb pixel_hsb = state.color;
+        struct zmk_led_hsb pixel_hsb = state.colors[active_profile_index];
         // The spinning effect comes from animation_step, which increments continuously
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
         pixel_hsb.h = (angle_hue + state.animation_step) % HUE_MAX;
@@ -630,14 +649,14 @@ static void zmk_pk_underglow_effect_layer(void) {
 
     bool active = false;
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        pixels[i].r -= state.effect_speeds[state.current_effect] < pixels[i].r ? state.effect_speeds[state.current_effect] : pixels[i].r;
-        pixels[i].g -= state.effect_speeds[state.current_effect] < pixels[i].g ? state.effect_speeds[state.current_effect] : pixels[i].g;
-        pixels[i].b -= state.effect_speeds[state.current_effect] < pixels[i].b ? state.effect_speeds[state.current_effect] : pixels[i].b;
+        pixels[i].r -= state.effect_speeds[state.current_effects[active_profile_index]] < pixels[i].r ? state.effect_speeds[state.current_effects[active_profile_index]] : pixels[i].r;
+        pixels[i].g -= state.effect_speeds[state.current_effects[active_profile_index]] < pixels[i].g ? state.effect_speeds[state.current_effects[active_profile_index]] : pixels[i].g;
+        pixels[i].b -= state.effect_speeds[state.current_effects[active_profile_index]] < pixels[i].b ? state.effect_speeds[state.current_effects[active_profile_index]] : pixels[i].b;
         if (pixels[i].r || pixels[i].g || pixels[i].b) {
             active = true;
         }
     }
-    state.animation_step += state.effect_speeds[state.current_effect];
+    state.animation_step += state.effect_speeds[state.current_effects[active_profile_index]];
 
     if (state.animation_step > 255 || !active) {
         zmk_pk_underglow_transient_off();
@@ -645,7 +664,7 @@ static void zmk_pk_underglow_effect_layer(void) {
 }
 
 static void zmk_pk_underglow_effect_layer_spectrum(void) {
-    state.animation_step += state.effect_speeds[state.current_effect] * 3;
+    state.animation_step += state.effect_speeds[state.current_effects[active_profile_index]] * 3;
     state.animation_step %= HUE_MAX;
     
     uint8_t top_layer = pk_underglow_top_layer();
@@ -657,7 +676,7 @@ static void zmk_pk_underglow_effect_layer_spectrum(void) {
 #endif // IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 
 static void zmk_pk_underglow_tick(struct k_work *work) {
-    switch (state.current_effect) {
+    switch (state.current_effects[active_profile_index]) {
     case UNDERGLOW_EFFECT_SOLID:
         zmk_pk_underglow_effect_solid();
         break;
@@ -805,15 +824,20 @@ static int zmk_pk_underglow_init(void) {
     }
 
     state = (struct pk_underglow_state){
-        color : {
-            h : CONFIG_ZMK_PK_UNDERGLOW_HUE_START,
-            s : CONFIG_ZMK_PK_UNDERGLOW_SAT_START,
-            b : CONFIG_ZMK_PK_UNDERGLOW_BRT_START,
-        },
-        current_effect : CONFIG_ZMK_PK_UNDERGLOW_EFF_START,
         animation_step : 0,
         on : IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_ON_START)
     };
+
+    active_profile_index = get_active_profile();
+
+    for (int i = 0; i < ZMK_ENDPOINT_COUNT; i++) {
+        state.colors[i] = (struct zmk_led_hsb){
+            .h = CONFIG_ZMK_PK_UNDERGLOW_HUE_START,
+            .s = CONFIG_ZMK_PK_UNDERGLOW_SAT_START,
+            .b = CONFIG_ZMK_PK_UNDERGLOW_BRT_START,
+        };
+        state.current_effects[i] = CONFIG_ZMK_PK_UNDERGLOW_EFF_START;
+    }
 
     for (int i = 0; i < UNDERGLOW_EFFECT_NUMBER; i++) {
         state.effect_speeds[i] = CONFIG_ZMK_PK_UNDERGLOW_SPD_START;
@@ -858,7 +882,7 @@ int zmk_pk_underglow_get_state(bool *on_off) {
 int zmk_pk_underglow_on(void) {
     zmk_pk_underglow_transient_on();
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
-    if (state.current_effect == UNDERGLOW_EFFECT_LAYER_INDICATORS) {
+    if (state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_LAYER_INDICATORS) {
         state.layer_enabled = true;
     }
 #endif
@@ -955,7 +979,7 @@ int zmk_pk_underglow_transient_off(void) {
 }
 
 int zmk_pk_underglow_calc_effect(int direction) {
-    return (state.current_effect + UNDERGLOW_EFFECT_NUMBER + direction) % UNDERGLOW_EFFECT_NUMBER;
+    return (state.current_effects[active_profile_index] + UNDERGLOW_EFFECT_NUMBER + direction) % UNDERGLOW_EFFECT_NUMBER;
 }
 
 int zmk_pk_underglow_select_effect(int effect) {
@@ -966,13 +990,13 @@ int zmk_pk_underglow_select_effect(int effect) {
         return -EINVAL;
     }
 
-    state.current_effect = effect;
+    state.current_effects[active_profile_index] = effect;
     state.animation_step = 0;
     
     if (effect == UNDERGLOW_EFFECT_RAINBOW_RIPPLE || effect == UNDERGLOW_EFFECT_RAINBOW_TWINKLE) {
-        global_rainbow_hue = state.color.h;
+        global_rainbow_hue = state.colors[active_profile_index].h;
         for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-            pixel_base_hues[i] = state.color.h;
+            pixel_base_hues[i] = state.colors[active_profile_index].h;
         }
     }
     
@@ -1008,7 +1032,7 @@ int zmk_pk_underglow_toggle(void) {
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 
 static struct led_rgb hex_to_rgb(uint8_t r, uint8_t g, uint8_t b) {
-    struct zmk_led_hsb hsb = state.color;
+    struct zmk_led_hsb hsb = state.colors[active_profile_index];
     return (struct led_rgb){
         .r = (hsb.b * r) / 0xff,
         .g = (hsb.b * g) / 0xff,
@@ -1096,7 +1120,7 @@ int zmk_pk_underglow_set_hsb(struct zmk_led_hsb color) {
         return -ENOTSUP;
     }
 
-    state.color = color;
+    state.colors[active_profile_index] = color;
 
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state.layer_enabled) {
@@ -1108,7 +1132,7 @@ int zmk_pk_underglow_set_hsb(struct zmk_led_hsb color) {
 }
 
 struct zmk_led_hsb zmk_pk_underglow_calc_hue(int direction) {
-    struct zmk_led_hsb color = state.color;
+    struct zmk_led_hsb color = state.colors[active_profile_index];
 
     color.h += HUE_MAX + (direction * CONFIG_ZMK_PK_UNDERGLOW_HUE_STEP);
     color.h %= HUE_MAX;
@@ -1117,7 +1141,7 @@ struct zmk_led_hsb zmk_pk_underglow_calc_hue(int direction) {
 }
 
 struct zmk_led_hsb zmk_pk_underglow_calc_sat(int direction) {
-    struct zmk_led_hsb color = state.color;
+    struct zmk_led_hsb color = state.colors[active_profile_index];
 
     int s = color.s + (direction * CONFIG_ZMK_PK_UNDERGLOW_SAT_STEP);
     if (s < 0) {
@@ -1131,7 +1155,7 @@ struct zmk_led_hsb zmk_pk_underglow_calc_sat(int direction) {
 }
 
 struct zmk_led_hsb zmk_pk_underglow_calc_brt(int direction) {
-    struct zmk_led_hsb color = state.color;
+    struct zmk_led_hsb color = state.colors[active_profile_index];
 
     int b = color.b + (direction * CONFIG_ZMK_PK_UNDERGLOW_BRT_STEP);
     color.b = CLAMP(b, 0, BRT_MAX);
@@ -1143,7 +1167,7 @@ int zmk_pk_underglow_change_hue(int direction) {
     if (!led_strip)
         return -ENODEV;
 
-    state.color = zmk_pk_underglow_calc_hue(direction);
+    state.colors[active_profile_index] = zmk_pk_underglow_calc_hue(direction);
 
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state.layer_enabled) {
@@ -1158,7 +1182,7 @@ int zmk_pk_underglow_change_sat(int direction) {
     if (!led_strip)
         return -ENODEV;
 
-    state.color = zmk_pk_underglow_calc_sat(direction);
+    state.colors[active_profile_index] = zmk_pk_underglow_calc_sat(direction);
 
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state.layer_enabled) {
@@ -1173,7 +1197,7 @@ int zmk_pk_underglow_change_brt(int direction) {
     if (!led_strip)
         return -ENODEV;
 
-    state.color = zmk_pk_underglow_calc_brt(direction);
+    state.colors[active_profile_index] = zmk_pk_underglow_calc_brt(direction);
 
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state.layer_enabled) {
@@ -1188,14 +1212,14 @@ int zmk_pk_underglow_change_spd(int direction) {
     if (!led_strip)
         return -ENODEV;
 
-    if (state.effect_speeds[state.current_effect] == 1 && direction < 0) {
+    if (state.effect_speeds[state.current_effects[active_profile_index]] == 1 && direction < 0) {
         return 0;
     }
 
-    state.effect_speeds[state.current_effect] += direction;
+    state.effect_speeds[state.current_effects[active_profile_index]] += direction;
 
-    if (state.effect_speeds[state.current_effect] > 5) {
-        state.effect_speeds[state.current_effect] = 5;
+    if (state.effect_speeds[state.current_effects[active_profile_index]] > 5) {
+        state.effect_speeds[state.current_effects[active_profile_index]] = 5;
     }
 
     return zmk_pk_underglow_save_state();
@@ -1215,9 +1239,9 @@ static struct pk_underglow_sleep_state sleep_state = {
 
 static void sync_peripheral_state(uint8_t layer, int state_directive) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-    uint32_t param1 = (state.color.h & 0xFFFF) | ((state.color.s & 0xFF) << 16) | ((state.color.b & 0xFF) << 24);
-    uint32_t param2 = (state.current_effect & 0xFF) | 
-                      ((state.effect_speeds[state.current_effect] & 0xFF) << 8) | 
+    uint32_t param1 = (state.colors[active_profile_index].h & 0xFFFF) | ((state.colors[active_profile_index].s & 0xFF) << 16) | ((state.colors[active_profile_index].b & 0xFF) << 24);
+    uint32_t param2 = (state.current_effects[active_profile_index] & 0xFF) | 
+                      ((state.effect_speeds[state.current_effects[active_profile_index]] & 0xFF) << 8) | 
                       ((layer & 0xFF) << 16) | 
                       ((state.on ? 1 : 0) << 24) | 
                       ((state_directive & 0x03) << 25) |
@@ -1369,7 +1393,7 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
 #endif /* UNDERGLOW_LAYER_ENABLED */
 
     if (as_zmk_position_state_changed(eh)) {
-        if (state.on && (state.current_effect == UNDERGLOW_EFFECT_RIPPLE || state.current_effect == UNDERGLOW_EFFECT_RAINBOW_RIPPLE)) {
+        if (state.on && (state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_RIPPLE || state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_RAINBOW_RIPPLE)) {
             const struct zmk_position_state_changed *ev = as_zmk_position_state_changed(eh);
             if (ev->state && ev->source == ZMK_POSITION_STATE_CHANGE_SOURCE_LOCAL) {
                 uint8_t row = ev->position / 12;
@@ -1377,7 +1401,7 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
                 ripples[ripple_idx].row = row;
                 ripples[ripple_idx].col = col;
                 ripples[ripple_idx].start_time = k_uptime_get_32();
-                ripples[ripple_idx].hue = (state.current_effect == UNDERGLOW_EFFECT_RAINBOW_RIPPLE) ? global_rainbow_hue : state.color.h;
+                ripples[ripple_idx].hue = (state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_RAINBOW_RIPPLE) ? global_rainbow_hue : state.colors[active_profile_index].h;
                 ripples[ripple_idx].active = true;
                 ripple_idx = (ripple_idx + 1) % MAX_RIPPLES;
             }
@@ -1445,26 +1469,43 @@ ZMK_SUBSCRIPTION(pk_underglow, zmk_layer_state_changed);
 ZMK_SUBSCRIPTION(pk_underglow, zmk_underglow_color_changed);
 #endif
 
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
+static int zmk_pk_underglow_endpoint_changed(const zmk_event_t *eh) {
+    uint8_t new_profile = get_active_profile();
+    if (active_profile_index != new_profile) {
+        active_profile_index = new_profile;
+        state.animation_step = 0;
+        
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+        sync_peripheral_state(pk_underglow_top_layer(), 0);
+#endif
+    }
+    return ZMK_EV_EVENT_BUBBLE;
+}
+ZMK_LISTENER(pk_underglow_endpoint, zmk_pk_underglow_endpoint_changed);
+ZMK_SUBSCRIPTION(pk_underglow_endpoint, zmk_endpoint_changed);
+#endif
+
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
     // Unpack param1 (Color)
-    state.color.h = param1 & 0xFFFF;
-    state.color.s = (param1 >> 16) & 0xFF;
-    state.color.b = (param1 >> 24) & 0xFF;
+    state.colors[active_profile_index].h = param1 & 0xFFFF;
+    state.colors[active_profile_index].s = (param1 >> 16) & 0xFF;
+    state.colors[active_profile_index].b = (param1 >> 24) & 0xFF;
 
     // Unpack param2 (State & Effect)
-    uint8_t old_effect = state.current_effect;
-    state.current_effect = param2 & 0xFF;
-    bool effect_changed = (old_effect != state.current_effect);
+    uint8_t old_effect = state.current_effects[active_profile_index];
+    state.current_effects[active_profile_index] = param2 & 0xFF;
+    bool effect_changed = (old_effect != state.current_effects[active_profile_index]);
     
-    state.effect_speeds[state.current_effect] = (param2 >> 8) & 0xFF;
+    state.effect_speeds[state.current_effects[active_profile_index]] = (param2 >> 8) & 0xFF;
     uint8_t layer = (param2 >> 16) & 0xFF;
     state.on = (param2 >> 24) & 1;
     int state_directive = (param2 >> 25) & 3;
     state.layer_enabled = (param2 >> 27) & 1;
 
     LOG_DBG("Peripheral: Extracted ug_sync state. Effect=%d, Hue=%d, Layer=%d, StateDirective=%d", 
-            state.current_effect, state.color.h, layer, state_directive);
+            state.current_effects[active_profile_index], state.colors[active_profile_index].h, layer, state_directive);
 
     // Apply the layer if the effect relies on it
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
@@ -1494,13 +1535,13 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
 SYS_INIT(zmk_pk_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 
 struct zmk_led_hsb zmk_pk_underglow_get_color(void) {
-    return state.color;
+    return state.colors[active_profile_index];
 }
 
 struct zmk_led_hsb zmk_pk_underglow_get_eff_color(void) {
-    struct zmk_led_hsb hsb = state.color;
+    struct zmk_led_hsb hsb = state.colors[active_profile_index];
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
-    if (state.current_effect == UNDERGLOW_EFFECT_LAYER_SPECTRUM) {
+    if (state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_LAYER_SPECTRUM) {
         hsb.h = (hsb.h + state.animation_step) % HUE_MAX;
     }
 #endif
