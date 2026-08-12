@@ -263,6 +263,7 @@ static uint8_t get_active_profile(void) {
 }
 
 static bool is_powered = false;
+static uint64_t power_on_uptime = 0;
 
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_EXT_POWER)
 static const struct device *const ext_power = DEVICE_DT_GET(DT_INST(0, zmk_ext_power_generic));
@@ -889,6 +890,8 @@ int zmk_pk_underglow_transient_on(void) {
         return 0;
     }
 
+    power_on_uptime = k_uptime_get();
+
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_EXT_POWER)
     if (ext_power != NULL) {
         int rc = ext_power_enable(ext_power);
@@ -1078,11 +1081,15 @@ static void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup) {
                 return;
             }
             zmk_pk_underglow_transient_on();
-            
-            // Allow power to stabilize before writing the first frame of pixels
-            k_sleep(K_MSEC(PK_UNDERGLOW_POWER_STABILIZATION_MS));
         }
-        k_timer_stop(&underglow_tick);
+        
+        uint64_t uptime = k_uptime_get();
+        if (uptime - power_on_uptime < PK_UNDERGLOW_POWER_STABILIZATION_MS) {
+            k_timer_stop(&underglow_tick);
+            k_sleep(K_MSEC(PK_UNDERGLOW_POWER_STABILIZATION_MS - (uptime - power_on_uptime)));
+        } else {
+            k_timer_stop(&underglow_tick);
+        }
         state.animation_step = 0;
         int fade_delay = zmk_rgbmap_fade_delay(layer);
         bool animated = zmk_rgbmap_is_animated(layer);
