@@ -95,7 +95,6 @@ enum pk_underglow_effect {
     UNDERGLOW_EFFECT_PINWHEEL,
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     UNDERGLOW_EFFECT_LAYER_INDICATORS,
-    UNDERGLOW_EFFECT_LAYER_SPECTRUM,
 #endif
     UNDERGLOW_EFFECT_NUMBER // Used to track number of underglow effects
 };
@@ -663,16 +662,6 @@ static void zmk_pk_underglow_effect_layer(void) {
     }
 }
 
-static void zmk_pk_underglow_effect_layer_spectrum(void) {
-    state.animation_step += state.effect_speeds[state.current_effects[active_profile_index]] * 3;
-    state.animation_step %= HUE_MAX;
-    
-    uint8_t top_layer = pk_underglow_top_layer();
-    const struct zmk_behavior_binding *rgbmap = pk_underglow_get_bindings(top_layer);
-    if (rgbmap != NULL) {
-        zmk_pk_underglow_apply_rgbmap(rgbmap, ZMK_KEYMAP_LEN, top_layer);
-    }
-}
 #endif // IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 
 static void zmk_pk_underglow_tick(struct k_work *work) {
@@ -710,9 +699,6 @@ static void zmk_pk_underglow_tick(struct k_work *work) {
 #if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     case UNDERGLOW_EFFECT_LAYER_INDICATORS:
         zmk_pk_underglow_effect_layer();
-        break;
-    case UNDERGLOW_EFFECT_LAYER_SPECTRUM:
-        zmk_pk_underglow_effect_layer_spectrum();
         break;
 #endif
     }
@@ -1536,16 +1522,6 @@ SYS_INIT(zmk_pk_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 
 struct zmk_led_hsb zmk_pk_underglow_get_color(void) {
     return state.colors[active_profile_index];
-}
-
-struct zmk_led_hsb zmk_pk_underglow_get_eff_color(void) {
-    struct zmk_led_hsb hsb = state.colors[active_profile_index];
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
-    if (state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_LAYER_SPECTRUM) {
-        hsb.h = (hsb.h + state.animation_step) % HUE_MAX;
-    }
-#endif
-    return hsb;
 }
 
 int zmk_pk_underglow_hsb_to_hex(struct zmk_led_hsb hsb) {
