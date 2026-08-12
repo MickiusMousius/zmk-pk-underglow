@@ -99,7 +99,7 @@ enum pk_underglow_effect {
 
 struct pk_underglow_state {
     struct zmk_led_hsb color;
-    uint8_t animation_speed;
+    uint8_t effect_speeds[UNDERGLOW_EFFECT_NUMBER];
     uint8_t current_effect;
     uint16_t animation_step;
     bool on;
@@ -340,7 +340,7 @@ static void zmk_pk_underglow_effect_breathe(void) {
         pixels[i] = rgb;
     }
 
-    state.animation_step += state.animation_speed * 13;
+    state.animation_step += state.effect_speeds[state.current_effect] * 13;
 
     if (state.animation_step > 2400) {
         state.animation_step = 0;
@@ -356,7 +356,7 @@ static void zmk_pk_underglow_effect_spectrum(void) {
         pixels[i] = rgb;
     }
 
-    state.animation_step += state.animation_speed;
+    state.animation_step += state.effect_speeds[state.current_effect];
     state.animation_step = state.animation_step % HUE_MAX;
 }
 
@@ -371,7 +371,7 @@ static void zmk_pk_underglow_effect_swirl(void) {
         pixels[i] = hsb_to_rgb(hsb_scale_min_max(hsb));
     }
 
-    state.animation_step += state.animation_speed * 3;
+    state.animation_step += state.effect_speeds[state.current_effect] * 3;
     state.animation_step = state.animation_step % HUE_MAX;
 }
 
@@ -395,7 +395,7 @@ static void zmk_pk_underglow_effect_ripple(void) {
             uint32_t elapsed = now - ripples[r].start_time;
             
             // Animation speed governs how fast it expands
-            float speed_factor = state.animation_speed * 0.6f; 
+            float speed_factor = state.effect_speeds[state.current_effect] * 0.6f; 
             float current_radius = (float)elapsed * speed_factor / 100.0f;
             float max_radius = 12.0f; // Max distance across one half of keyboard
             
@@ -428,7 +428,7 @@ static void zmk_pk_underglow_effect_rainbow_ripple(void) {
     struct zmk_led_hsb base_hsb = state.color;
     
     // Global rainbow hue updates on every tick like the spectrum effect
-    global_rainbow_hue = (global_rainbow_hue + state.animation_speed) % HUE_MAX;
+    global_rainbow_hue = (global_rainbow_hue + state.effect_speeds[state.current_effect]) % HUE_MAX;
     
     // Dim base color
     base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
@@ -446,7 +446,7 @@ static void zmk_pk_underglow_effect_rainbow_ripple(void) {
             uint32_t elapsed = now - ripples[r].start_time;
             
             // Animation speed governs how fast it expands
-            float speed_factor = state.animation_speed * 0.6f; 
+            float speed_factor = state.effect_speeds[state.current_effect] * 0.6f; 
             float current_radius = (float)elapsed * speed_factor / 100.0f;
             float max_radius = 12.0f; // Max distance across one half of keyboard
             
@@ -499,7 +499,7 @@ static void zmk_pk_underglow_effect_twinkle(void) {
                 twinkles[i].led_index = sys_rand32_get() % STRIP_NUM_PIXELS;
                 twinkles[i].start_time = now;
                 // 2000ms / speed + random offset (doubled from original)
-                twinkles[i].duration = (4000 / state.animation_speed) + (sys_rand32_get() % 2000);
+                twinkles[i].duration = (4000 / state.effect_speeds[state.current_effect]) + (sys_rand32_get() % 2000);
                 twinkles[i].active = true;
             }
             continue;
@@ -532,7 +532,7 @@ static void zmk_pk_underglow_effect_rainbow_twinkle(void) {
     struct zmk_led_hsb base_hsb = state.color;
     
     // Global rainbow hue updates on every tick like the spectrum effect
-    global_rainbow_hue = (global_rainbow_hue + state.animation_speed) % HUE_MAX;
+    global_rainbow_hue = (global_rainbow_hue + state.effect_speeds[state.current_effect]) % HUE_MAX;
     
     // Dim base color and apply the dynamic rainbow hue
     base_hsb.h = global_rainbow_hue;
@@ -549,7 +549,7 @@ static void zmk_pk_underglow_effect_rainbow_twinkle(void) {
             if ((sys_rand32_get() % 100) < 5) {
                 twinkles[i].led_index = sys_rand32_get() % STRIP_NUM_PIXELS;
                 twinkles[i].start_time = now;
-                twinkles[i].duration = (4000 / state.animation_speed) + (sys_rand32_get() % 2000);
+                twinkles[i].duration = (4000 / state.effect_speeds[state.current_effect]) + (sys_rand32_get() % 2000);
                 twinkles[i].hue = global_rainbow_hue; // Capture the current ambient hue
                 twinkles[i].active = true;
             }
@@ -589,7 +589,7 @@ static void zmk_pk_underglow_effect_pinwheel(void) {
     // Increment the animation step to make it spin!
     // 0.5 revs/sec at max speed (5) = 180 degrees/sec.
     // Timer runs at ~15 ticks/sec (67ms). 180 / 15 = 12 degrees/tick.
-    state.animation_step += (state.animation_speed * 12) / 5;
+    state.animation_step += (state.effect_speeds[state.current_effect] * 12) / 5;
     state.animation_step = state.animation_step % HUE_MAX;
     
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
@@ -630,14 +630,14 @@ static void zmk_pk_underglow_effect_layer(void) {
 
     bool active = false;
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        pixels[i].r -= state.animation_speed < pixels[i].r ? state.animation_speed : pixels[i].r;
-        pixels[i].g -= state.animation_speed < pixels[i].g ? state.animation_speed : pixels[i].g;
-        pixels[i].b -= state.animation_speed < pixels[i].b ? state.animation_speed : pixels[i].b;
+        pixels[i].r -= state.effect_speeds[state.current_effect] < pixels[i].r ? state.effect_speeds[state.current_effect] : pixels[i].r;
+        pixels[i].g -= state.effect_speeds[state.current_effect] < pixels[i].g ? state.effect_speeds[state.current_effect] : pixels[i].g;
+        pixels[i].b -= state.effect_speeds[state.current_effect] < pixels[i].b ? state.effect_speeds[state.current_effect] : pixels[i].b;
         if (pixels[i].r || pixels[i].g || pixels[i].b) {
             active = true;
         }
     }
-    state.animation_step += state.animation_speed;
+    state.animation_step += state.effect_speeds[state.current_effect];
 
     if (state.animation_step > 255 || !active) {
         zmk_pk_underglow_transient_off();
@@ -645,7 +645,7 @@ static void zmk_pk_underglow_effect_layer(void) {
 }
 
 static void zmk_pk_underglow_effect_layer_spectrum(void) {
-    state.animation_step += state.animation_speed * 3;
+    state.animation_step += state.effect_speeds[state.current_effect] * 3;
     state.animation_step %= HUE_MAX;
     
     uint8_t top_layer = pk_underglow_top_layer();
@@ -810,11 +810,14 @@ static int zmk_pk_underglow_init(void) {
             s : CONFIG_ZMK_PK_UNDERGLOW_SAT_START,
             b : CONFIG_ZMK_PK_UNDERGLOW_BRT_START,
         },
-        animation_speed : CONFIG_ZMK_PK_UNDERGLOW_SPD_START,
         current_effect : CONFIG_ZMK_PK_UNDERGLOW_EFF_START,
         animation_step : 0,
         on : IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_ON_START)
     };
+
+    for (int i = 0; i < UNDERGLOW_EFFECT_NUMBER; i++) {
+        state.effect_speeds[i] = CONFIG_ZMK_PK_UNDERGLOW_SPD_START;
+    }
 
 #if IS_ENABLED(CONFIG_SETTINGS)
     k_work_init_delayable(&underglow_save_work, zmk_pk_underglow_save_state_work);
@@ -1185,14 +1188,14 @@ int zmk_pk_underglow_change_spd(int direction) {
     if (!led_strip)
         return -ENODEV;
 
-    if (state.animation_speed == 1 && direction < 0) {
+    if (state.effect_speeds[state.current_effect] == 1 && direction < 0) {
         return 0;
     }
 
-    state.animation_speed += direction;
+    state.effect_speeds[state.current_effect] += direction;
 
-    if (state.animation_speed > 5) {
-        state.animation_speed = 5;
+    if (state.effect_speeds[state.current_effect] > 5) {
+        state.effect_speeds[state.current_effect] = 5;
     }
 
     return zmk_pk_underglow_save_state();
@@ -1214,7 +1217,7 @@ static void sync_peripheral_state(uint8_t layer, int state_directive) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     uint32_t param1 = (state.color.h & 0xFFFF) | ((state.color.s & 0xFF) << 16) | ((state.color.b & 0xFF) << 24);
     uint32_t param2 = (state.current_effect & 0xFF) | 
-                      ((state.animation_speed & 0xFF) << 8) | 
+                      ((state.effect_speeds[state.current_effect] & 0xFF) << 8) | 
                       ((layer & 0xFF) << 16) | 
                       ((state.on ? 1 : 0) << 24) | 
                       ((state_directive & 0x03) << 25) |
@@ -1454,7 +1457,7 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
     state.current_effect = param2 & 0xFF;
     bool effect_changed = (old_effect != state.current_effect);
     
-    state.animation_speed = (param2 >> 8) & 0xFF;
+    state.effect_speeds[state.current_effect] = (param2 >> 8) & 0xFF;
     uint8_t layer = (param2 >> 16) & 0xFF;
     state.on = (param2 >> 24) & 1;
     int state_directive = (param2 >> 25) & 3;
