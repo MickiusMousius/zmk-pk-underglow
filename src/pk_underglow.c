@@ -48,6 +48,8 @@
 #include <zmk/split/central.h>
 #endif
 
+#define PK_UNDERGLOW_POWER_STABILIZATION_MS 20
+
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 #include <zmk/events/split_peripheral_status_changed.h>
 static bool is_central_connected = false;
@@ -906,7 +908,7 @@ int zmk_pk_underglow_transient_on(void) {
     }
 
     is_powered = true;
-    k_timer_start(&underglow_tick, K_MSEC(10), K_MSEC(67));
+    k_timer_start(&underglow_tick, K_MSEC(PK_UNDERGLOW_POWER_STABILIZATION_MS), K_MSEC(67));
 
     return 0;
 }
@@ -1078,7 +1080,7 @@ static void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup) {
             zmk_pk_underglow_transient_on();
             
             // Allow power to stabilize before writing the first frame of pixels
-            k_sleep(K_MSEC(10));
+            k_sleep(K_MSEC(PK_UNDERGLOW_POWER_STABILIZATION_MS));
         }
         k_timer_stop(&underglow_tick);
         state.animation_step = 0;
