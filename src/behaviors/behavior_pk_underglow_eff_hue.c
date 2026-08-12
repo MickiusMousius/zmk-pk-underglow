@@ -21,8 +21,8 @@ static int underglow_eff_hue_init(const struct device *dev) { return 0; };
 
 static int underglow_eff_hue_process(struct zmk_behavior_binding *binding,
                                      struct zmk_behavior_binding_event event) {
-    // 1. Fetch current color from the module
-    struct zmk_led_hsb hsb = zmk_pk_underglow_get_color();
+    // 1. Fetch current color (potentially animated) from the module
+    struct zmk_led_hsb hsb = zmk_pk_underglow_get_eff_color();
     
     // 2. Add offset and wrap around 360 (HUE_MAX)
     int offset = binding->param1;
