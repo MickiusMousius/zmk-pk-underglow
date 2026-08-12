@@ -302,7 +302,7 @@ static void zmk_pk_underglow_effect_ripple(void) {
             uint32_t elapsed = now - ripples[r].start_time;
             
             // Animation speed governs how fast it expands
-            float speed_factor = state.animation_speed * 0.3f; 
+            float speed_factor = state.animation_speed * 0.6f; 
             float current_radius = (float)elapsed * speed_factor / 100.0f;
             float max_radius = 12.0f; // Max distance across one half of keyboard
             
@@ -353,7 +353,7 @@ static void zmk_pk_underglow_effect_rainbow_ripple(void) {
             uint32_t elapsed = now - ripples[r].start_time;
             
             // Animation speed governs how fast it expands
-            float speed_factor = state.animation_speed * 0.3f; 
+            float speed_factor = state.animation_speed * 0.6f; 
             float current_radius = (float)elapsed * speed_factor / 100.0f;
             float max_radius = 12.0f; // Max distance across one half of keyboard
             
@@ -405,9 +405,8 @@ static void zmk_pk_underglow_effect_twinkle(void) {
             if ((sys_rand32_get() % 100) < 5) {
                 twinkles[i].led_index = sys_rand32_get() % STRIP_NUM_PIXELS;
                 twinkles[i].start_time = now;
-                // Duration inversely related to animation_speed. Max speed (5) -> short duration.
-                // 1000ms / speed + random offset
-                twinkles[i].duration = (2000 / state.animation_speed) + (sys_rand32_get() % 1000);
+                // 2000ms / speed + random offset (doubled from original)
+                twinkles[i].duration = (4000 / state.animation_speed) + (sys_rand32_get() % 2000);
                 twinkles[i].active = true;
             }
             continue;
@@ -457,7 +456,7 @@ static void zmk_pk_underglow_effect_rainbow_twinkle(void) {
             if ((sys_rand32_get() % 100) < 5) {
                 twinkles[i].led_index = sys_rand32_get() % STRIP_NUM_PIXELS;
                 twinkles[i].start_time = now;
-                twinkles[i].duration = (2000 / state.animation_speed) + (sys_rand32_get() % 1000);
+                twinkles[i].duration = (4000 / state.animation_speed) + (sys_rand32_get() % 2000);
                 twinkles[i].hue = global_rainbow_hue; // Capture the current ambient hue
                 twinkles[i].active = true;
             }
