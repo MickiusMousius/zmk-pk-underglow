@@ -141,12 +141,100 @@ struct pk_twinkle {
 
 static struct pk_twinkle twinkles[CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX];
 
-static const uint8_t twinkle_lut[32] = {
+/**
+ * Calculates the sine wave mapping for the twinkle effect.
+ * Assumes a max animation lifespan mapped to 32 steps.
+ * 
+ * Generation Script:
+ * ```python
+ * import math
+ * vals = [round((math.sin((i / 31.0) * math.pi) ** 2) * 100) for i in range(32)]
+ * print(vals)
+ * ```
+ */
+static const uint8_t twinkle_sin_lut[32] = {
     0, 1, 3, 6, 10, 15, 22, 31,
     41, 53, 65, 77, 87, 94, 98, 100,
     100, 98, 94, 87, 77, 65, 53, 41,
     31, 22, 15, 10, 6, 3, 1, 0
 };
+
+static inline uint8_t pk_get_twinkle_sin(uint8_t step) {
+    if (step > 31) step = 31;
+    return twinkle_sin_lut[step];
+}
+
+/**
+ * Calculates the Euclidean distance between two points on the key matrix.
+ * Assumes a maximum matrix size of 22x7 keys.
+ * 
+ * Generation Script:
+ * ```python
+ * import math
+ * print("{")
+ * for r in range(8):
+ *     row = [round(math.sqrt(r**2 + c**2) * 100) for c in range(23)]
+ *     print("    {" + ", ".join(map(str, row)) + "},")
+ * print("}")
+ * ```
+ */
+static const uint16_t ripple_distance_lut[8][23] = {
+    {0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200},
+    {100, 141, 224, 316, 412, 510, 608, 707, 806, 906, 1005, 1105, 1204, 1304, 1404, 1503, 1603, 1703, 1803, 1903, 2002, 2102, 2202},
+    {200, 224, 283, 361, 447, 539, 632, 728, 825, 922, 1020, 1118, 1217, 1315, 1414, 1513, 1612, 1712, 1811, 1910, 2010, 2110, 2209},
+    {300, 316, 361, 424, 500, 583, 671, 762, 854, 949, 1044, 1140, 1237, 1334, 1432, 1530, 1628, 1726, 1825, 1924, 2022, 2121, 2220},
+    {400, 412, 447, 500, 566, 640, 721, 806, 894, 985, 1077, 1170, 1265, 1360, 1456, 1552, 1649, 1746, 1844, 1942, 2040, 2138, 2236},
+    {500, 510, 539, 583, 640, 707, 781, 860, 943, 1030, 1118, 1208, 1300, 1393, 1487, 1581, 1676, 1772, 1868, 1965, 2062, 2159, 2256},
+    {600, 608, 632, 671, 721, 781, 849, 922, 1000, 1082, 1166, 1253, 1342, 1432, 1523, 1616, 1709, 1803, 1897, 1992, 2088, 2184, 2280},
+    {700, 707, 728, 762, 806, 860, 922, 990, 1063, 1140, 1221, 1304, 1389, 1476, 1565, 1655, 1746, 1838, 1931, 2025, 2119, 2214, 2309},
+};
+
+static inline float pk_get_ripple_distance(int dr, int dc) {
+    int abs_r = abs(dr);
+    int abs_c = abs(dc);
+    if (abs_r > 7 || abs_c > 22) return 99.0f;
+    return ripple_distance_lut[abs_r][abs_c] / 100.0f;
+}
+
+/**
+ * Calculates the hue angle (0-360) for a given point relative to a center.
+ * Assumes a maximum matrix size of 22x7 keys.
+ * 
+ * Generation Script:
+ * ```python
+ * import math
+ * print("{")
+ * for dy in range(-7, 8):
+ *     row = [str(int(((math.atan2(dy, dx) + math.pi) / (2.0 * math.pi)) * 360) % 360) for dx in range(-22, 23)]
+ *     print("    {" + ", ".join(row) + "},")
+ * print("}")
+ * ```
+ */
+static const uint16_t pinwheel_angle_lut[15][45] = {
+    {17, 18, 19, 20, 21, 22, 23, 25, 26, 28, 30, 32, 34, 37, 41, 45, 49, 54, 60, 66, 74, 81, 90, 98, 105, 113, 119, 125, 130, 135, 138, 142, 145, 147, 149, 151, 153, 154, 156, 157, 158, 159, 160, 161, 162},
+    {15, 15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 28, 30, 33, 36, 40, 45, 50, 56, 63, 71, 80, 90, 99, 108, 116, 123, 129, 135, 139, 143, 146, 149, 151, 153, 155, 156, 158, 159, 160, 161, 162, 163, 164, 164},
+    {12, 13, 14, 14, 15, 16, 17, 18, 19, 21, 22, 24, 26, 29, 32, 35, 39, 45, 51, 59, 68, 78, 90, 101, 111, 120, 128, 135, 140, 144, 147, 150, 153, 155, 157, 158, 160, 161, 162, 163, 164, 165, 165, 166, 167},
+    {10, 10, 11, 11, 12, 13, 14, 14, 15, 17, 18, 19, 21, 23, 26, 29, 33, 38, 45, 53, 63, 75, 90, 104, 116, 126, 135, 141, 146, 150, 153, 156, 158, 160, 161, 162, 164, 165, 165, 166, 167, 168, 168, 169, 169},
+    {7, 8, 8, 8, 9, 10, 10, 11, 12, 12, 14, 15, 16, 18, 20, 23, 26, 30, 36, 45, 56, 71, 90, 108, 123, 135, 143, 149, 153, 156, 159, 161, 163, 164, 165, 167, 167, 168, 169, 169, 170, 171, 171, 171, 172},
+    {5, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 10, 11, 12, 14, 15, 18, 21, 26, 33, 45, 63, 90, 116, 135, 146, 153, 158, 161, 164, 165, 167, 168, 169, 170, 171, 171, 172, 172, 173, 173, 173, 174, 174, 174},
+    {2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 6, 7, 8, 9, 11, 14, 18, 26, 45, 90, 135, 153, 161, 165, 168, 170, 171, 172, 173, 174, 174, 175, 175, 175, 176, 176, 176, 176, 176, 177, 177, 177},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180},
+    {357, 357, 357, 356, 356, 356, 356, 356, 355, 355, 355, 354, 354, 353, 352, 351, 350, 348, 345, 341, 333, 315, 270, 225, 206, 198, 194, 191, 189, 188, 187, 186, 185, 185, 184, 184, 184, 183, 183, 183, 183, 183, 182, 182, 182},
+    {354, 354, 354, 353, 353, 353, 352, 352, 351, 351, 350, 349, 348, 347, 345, 344, 341, 338, 333, 326, 315, 296, 270, 243, 225, 213, 206, 201, 198, 195, 194, 192, 191, 190, 189, 188, 188, 187, 187, 186, 186, 186, 185, 185, 185},
+    {352, 351, 351, 351, 350, 349, 349, 348, 347, 347, 345, 344, 343, 341, 339, 336, 333, 329, 323, 315, 303, 288, 270, 251, 236, 225, 216, 210, 206, 203, 200, 198, 196, 195, 194, 192, 192, 191, 190, 190, 189, 188, 188, 188, 187},
+    {349, 349, 348, 348, 347, 346, 345, 345, 344, 342, 341, 340, 338, 336, 333, 330, 326, 321, 315, 306, 296, 284, 270, 255, 243, 233, 225, 218, 213, 209, 206, 203, 201, 199, 198, 197, 195, 194, 194, 193, 192, 191, 191, 190, 190},
+    {347, 346, 345, 345, 344, 343, 342, 341, 340, 338, 337, 335, 333, 330, 327, 324, 320, 315, 308, 300, 291, 281, 270, 258, 248, 239, 231, 225, 219, 215, 212, 209, 206, 204, 202, 201, 199, 198, 197, 196, 195, 194, 194, 193, 192},
+    {344, 344, 343, 342, 341, 340, 339, 338, 336, 335, 333, 331, 329, 326, 323, 319, 315, 309, 303, 296, 288, 279, 270, 260, 251, 243, 236, 230, 225, 220, 216, 213, 210, 208, 206, 204, 203, 201, 200, 199, 198, 197, 196, 195, 195},
+    {342, 341, 340, 339, 338, 337, 336, 334, 333, 331, 329, 327, 325, 322, 318, 315, 310, 305, 299, 293, 285, 278, 270, 261, 254, 246, 240, 234, 229, 225, 221, 217, 214, 212, 210, 208, 206, 205, 203, 202, 201, 200, 199, 198, 197},
+};
+
+static inline uint16_t pk_get_pinwheel_angle(int dr, int dc) {
+    int idx_r = dr + 7;
+    int idx_c = dc + 22;
+    if (idx_r < 0) idx_r = 0; else if (idx_r > 14) idx_r = 14;
+    if (idx_c < 0) idx_c = 0; else if (idx_c > 44) idx_c = 44;
+    return pinwheel_angle_lut[idx_r][idx_c];
+}
 
 static const struct device *led_strip;
 
@@ -315,7 +403,7 @@ static void zmk_pk_underglow_effect_ripple(void) {
                 continue;
             }
             
-            float dist = sqrtf(powf(p_row - ripples[r].row, 2) + powf(p_col - ripples[r].col, 2));
+            float dist = pk_get_ripple_distance(p_row - ripples[r].row, p_col - ripples[r].col);
             float thickness = 2.0f;
             float dist_from_ring = fabsf(current_radius - dist);
             
@@ -366,7 +454,7 @@ static void zmk_pk_underglow_effect_rainbow_ripple(void) {
                 continue;
             }
             
-            float dist = sqrtf(powf(p_row - ripples[r].row, 2) + powf(p_col - ripples[r].col, 2));
+            float dist = pk_get_ripple_distance(p_row - ripples[r].row, p_col - ripples[r].col);
             float thickness = 2.0f;
             float dist_from_ring = fabsf(current_radius - dist);
             
@@ -425,7 +513,7 @@ static void zmk_pk_underglow_effect_twinkle(void) {
         uint32_t lut_index = (elapsed * 32) / twinkles[i].duration;
         if (lut_index > 31) lut_index = 31;
         
-        uint8_t added_b = twinkle_lut[lut_index];
+        uint8_t added_b = pk_get_twinkle_sin(lut_index);
         uint8_t twinkle_b = CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS + (added_b * (100 - CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS)) / 100;
         
         // Scale to global brightness
@@ -476,7 +564,7 @@ static void zmk_pk_underglow_effect_rainbow_twinkle(void) {
         uint32_t lut_index = (elapsed * 32) / twinkles[i].duration;
         if (lut_index > 31) lut_index = 31;
         
-        uint8_t added_b = twinkle_lut[lut_index];
+        uint8_t added_b = pk_get_twinkle_sin(lut_index);
         uint8_t twinkle_b = CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS + (added_b * (100 - CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS)) / 100;
         
         // If the added brightness is essentially 0, it means the star is at the ambient level.
@@ -508,9 +596,9 @@ static void zmk_pk_underglow_effect_pinwheel(void) {
         int p_row = midx / 12;
         int p_col = midx % 12;
         
-        float theta = atan2f((float)p_row - center_row, (float)p_col - center_col);
-        
-        uint16_t angle_hue = (uint16_t)(((theta + 3.14159265f) / (2.0f * 3.14159265f)) * HUE_MAX);
+        int dr = p_row - (int)center_row;
+        int dc = p_col - (int)center_col;
+        uint16_t angle_hue = pk_get_pinwheel_angle(dr, dc);
         
         struct zmk_led_hsb pixel_hsb = state.color;
         // The spinning effect comes from animation_step, which increments continuously
