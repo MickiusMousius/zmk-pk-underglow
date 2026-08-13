@@ -40,6 +40,7 @@
 #include <zmk/workqueue.h>
 #include <zmk/events/layer_state_changed.h>
 #include <zmk/pk_split_sync.h>
+#include <zmk/pk_underglow_queue.h>
 
 #include <zmk/endpoints.h>
 #include <zmk/events/endpoint_changed.h>
@@ -402,7 +403,7 @@ static void zmk_pk_underglow_effect_ripple(void) {
     
     // Dim base color
     base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
-    struct led_rgb base_rgb = hsb_to_rgb(hsb_scale_min_max(base_hsb));
+
     
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         uint8_t midx = rgb_pixel_lookup(i);
@@ -667,7 +668,7 @@ static void zmk_pk_underglow_effect_layer(void) {
 
 #endif // IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 
-static void zmk_pk_underglow_tick(struct k_work *work) {
+void pk_ug_task_render_frame_execute(void) {
     switch (state.current_effects[active_profile_index]) {
     case UNDERGLOW_EFFECT_SOLID:
         zmk_pk_underglow_effect_solid();
@@ -712,14 +713,11 @@ static void zmk_pk_underglow_tick(struct k_work *work) {
     }
 }
 
-K_WORK_DEFINE(underglow_tick_work, zmk_pk_underglow_tick);
-
 static void zmk_pk_underglow_tick_handler(struct k_timer *timer) {
     if (!state.on) {
         return;
     }
-
-    k_work_submit_to_queue(zmk_workqueue_lowprio_work_q(), &underglow_tick_work);
+    pk_ug_queue_push(PK_UG_TASK_RENDER_FRAME);
 }
 
 K_TIMER_DEFINE(underglow_tick, zmk_pk_underglow_tick_handler, NULL);
@@ -758,6 +756,10 @@ static int rgb_settings_set(const char *name, size_t len, settings_read_cb read_
 SETTINGS_STATIC_HANDLER_DEFINE(pk_underglow, "rgb/underglow", NULL, rgb_settings_set, NULL, NULL);
 
 static void zmk_pk_underglow_save_state_work(struct k_work *_work) {
+    pk_ug_queue_push(PK_UG_TASK_SAVE_SETTINGS);
+}
+
+void pk_ug_task_save_settings_execute(void) {
     settings_save_one("rgb/underglow/state", &state, sizeof(state));
 }
 
@@ -765,6 +767,8 @@ static struct k_work_delayable underglow_save_work;
 #endif
 
 static int zmk_pk_underglow_init(void) {
+    pk_ug_queue_init();
+
     int min_row = 999, max_row = -1;
     int min_col = 999, max_col = -1;
 
@@ -885,12 +889,16 @@ int zmk_pk_underglow_transient_on(void) {
     state.on = true;
     state.animation_step = 0;
 
-    if (is_powered) {
-        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(67));
-        return 0;
-    }
+    pk_ug_queue_push(PK_UG_TASK_POWER_ON);
+    k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(67));
 
-    power_on_uptime = k_uptime_get();
+    return 0;
+}
+
+void pk_ug_task_power_on_execute(void) {
+    if (is_powered) {
+        return;
+    }
 
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_EXT_POWER)
     if (ext_power != NULL) {
@@ -911,12 +919,11 @@ int zmk_pk_underglow_transient_on(void) {
     }
 
     is_powered = true;
-    k_timer_start(&underglow_tick, K_MSEC(PK_UNDERGLOW_POWER_STABILIZATION_MS), K_MSEC(67));
-
-    return 0;
+    // Allow power to stabilize before returning, blocking any subsequent RENDER_FRAME tasks
+    k_sleep(K_MSEC(PK_UNDERGLOW_POWER_STABILIZATION_MS));
 }
 
-static void zmk_pk_underglow_off_handler(struct k_work *work) {
+void pk_ug_task_power_off_execute(void) {
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         pixels[i] = (struct led_rgb){r : 0, g : 0, b : 0};
     }
@@ -946,8 +953,6 @@ static void zmk_pk_underglow_off_handler(struct k_work *work) {
     is_powered = false;
 }
 
-K_WORK_DEFINE(underglow_off_work, zmk_pk_underglow_off_handler);
-
 int zmk_pk_underglow_off(void) {
     zmk_pk_underglow_transient_off();
     state.on = false;
@@ -962,7 +967,7 @@ int zmk_pk_underglow_transient_off(void) {
     if (!is_powered)
         return 0;
 
-    k_work_submit_to_queue(zmk_workqueue_lowprio_work_q(), &underglow_off_work);
+    pk_ug_queue_push(PK_UG_TASK_POWER_OFF);
 
     k_timer_stop(&underglow_tick);
 
@@ -1232,7 +1237,7 @@ static struct pk_underglow_sleep_state sleep_state = {
     .rgb_state_before_sleeping = false
 };
 
-static void sync_peripheral_state(uint8_t layer, int state_directive) {
+void pk_ug_task_sync_state_execute(uint8_t layer, uint8_t state_directive) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     uint32_t param1 = (state.colors[active_profile_index].h & 0xFFFF) | ((state.colors[active_profile_index].s & 0xFF) << 16) | ((state.colors[active_profile_index].b & 0xFF) << 24);
     uint32_t param2 = (state.current_effects[active_profile_index] & 0xFF) | 
@@ -1266,10 +1271,10 @@ static void sync_peripheral_state(uint8_t layer, int state_directive) {
 
 static void sync_peripheral_delayed_work_handler(struct k_work *work) {
     uint8_t layer = pk_underglow_top_layer();
-    sync_peripheral_state(layer, 0); // Layer sync
+    pk_ug_queue_push_sync(layer, 0); // Layer sync
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
     if (!sleep_state.is_awake) {
-        sync_peripheral_state(layer, 2); // Sleep sync
+        pk_ug_queue_push_sync(layer, 2); // Sleep sync
     }
 #endif
 }
@@ -1297,7 +1302,7 @@ static int pk_underglow_auto_state(bool target_wake_state) {
     }
     sleep_state.is_awake = target_wake_state;
     LOG_DBG("Auto state changed. Target wake: %d. Syncing to peripheral...", target_wake_state);
-    sync_peripheral_state(pk_underglow_top_layer(), target_wake_state ? 1 : 2);
+    pk_ug_queue_push_sync(pk_underglow_top_layer(), target_wake_state ? 1 : 2);
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) && IS_ENABLED(CONFIG_BT)
     // Force sending a standard payload shortly after waking, simulating a layer change.
@@ -1371,7 +1376,7 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
         LOG_DBG("zmk_layer_state_changed: %08x", ev->state);
         uint8_t layer = pk_underglow_top_layer();
         zmk_pk_underglow_set_layer(layer, true);
-        sync_peripheral_state(layer, 0);
+        pk_ug_queue_push_sync(layer, 0);
 
         return ZMK_EV_EVENT_BUBBLE;
     }
@@ -1472,7 +1477,7 @@ static int zmk_pk_underglow_endpoint_changed(const zmk_event_t *eh) {
         state.animation_step = 0;
         
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-        sync_peripheral_state(pk_underglow_top_layer(), 0);
+        pk_ug_queue_push_sync(pk_underglow_top_layer(), 0);
 #endif
     }
     return ZMK_EV_EVENT_BUBBLE;
@@ -1543,7 +1548,7 @@ static int pk_underglow_pm_action(const struct device *dev, enum pm_device_actio
     switch (action) {
     case PM_DEVICE_ACTION_SUSPEND:
         if (is_powered) {
-            zmk_pk_underglow_off_handler(NULL);
+            pk_ug_task_power_off_execute();
         }
         break;
     default:
