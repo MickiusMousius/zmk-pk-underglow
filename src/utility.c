@@ -40,14 +40,38 @@ struct led_rgb hsb_to_rgb(struct zmk_led_hsb hsb) {
         uint32_t t = (v * (255 - ((s * (255 - remainder)) >> 8))) >> 8;
 
         switch (region) {
-            case 0: r = v; g = t; b = p; break;
-            case 1: r = q; g = v; b = p; break;
-            case 2: r = p; g = v; b = t; break;
-            case 3: r = p; g = q; b = v; break;
-            case 4: r = t; g = p; b = v; break;
-            default: r = v; g = p; b = q; break;
+        case 0:
+            r = v;
+            g = t;
+            b = p;
+            break;
+        case 1:
+            r = q;
+            g = v;
+            b = p;
+            break;
+        case 2:
+            r = p;
+            g = v;
+            b = t;
+            break;
+        case 3:
+            r = p;
+            g = q;
+            b = v;
+            break;
+        case 4:
+            r = t;
+            g = p;
+            b = v;
+            break;
+        default:
+            r = v;
+            g = p;
+            b = q;
+            break;
         }
     }
 
-    return (struct led_rgb){ .r = r, .g = g, .b = b };
+    return (struct led_rgb){.r = r, .g = g, .b = b};
 }

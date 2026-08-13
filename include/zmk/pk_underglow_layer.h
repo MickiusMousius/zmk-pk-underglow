@@ -9,16 +9,15 @@
 
 #define ZMK_RGB_CHILD_LEN_PLUS_ONE(node) 1 +
 
-#define ZMK_RGBMAP_LAYERS_LEN                                                                      \
-    (DT_FOREACH_CHILD(DT_INST(0, zmk_pk_underglow_layer), ZMK_RGB_CHILD_LEN_PLUS_ONE) 0)
+#define ZMK_RGBMAP_LAYERS_LEN (DT_FOREACH_CHILD(DT_INST(0, zmk_pk_underglow_layer), ZMK_RGB_CHILD_LEN_PLUS_ONE) 0)
 
-#define ZMK_RGBMAP_EXTRACT_BINDING(idx, drv_inst)                                                  \
-    {                                                                                              \
-        .behavior_dev = DEVICE_DT_NAME(DT_PHANDLE_BY_IDX(drv_inst, bindings, idx)),                \
-        .param1 = COND_CODE_0(DT_PHA_HAS_CELL_AT_IDX(drv_inst, bindings, idx, param1), (0),        \
-                              (DT_PHA_BY_IDX(drv_inst, bindings, idx, param1))),                   \
-        .param2 = COND_CODE_0(DT_PHA_HAS_CELL_AT_IDX(drv_inst, bindings, idx, param2), (0),        \
-                              (DT_PHA_BY_IDX(drv_inst, bindings, idx, param2))),                   \
+#define ZMK_RGBMAP_EXTRACT_BINDING(idx, drv_inst)                                                                      \
+    {                                                                                                                  \
+        .behavior_dev = DEVICE_DT_NAME(DT_PHANDLE_BY_IDX(drv_inst, bindings, idx)),                                    \
+        .param1 = COND_CODE_0(DT_PHA_HAS_CELL_AT_IDX(drv_inst, bindings, idx, param1), (0),                            \
+                              (DT_PHA_BY_IDX(drv_inst, bindings, idx, param1))),                                       \
+        .param2 = COND_CODE_0(DT_PHA_HAS_CELL_AT_IDX(drv_inst, bindings, idx, param2), (0),                            \
+                              (DT_PHA_BY_IDX(drv_inst, bindings, idx, param2))),                                       \
     }
 
 int rgb_pixel_lookup(int idx);

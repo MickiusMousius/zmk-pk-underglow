@@ -4,15 +4,15 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <zephyr/device.h>
 #include <drivers/behavior.h>
-#include <zephyr/sys/util.h>
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/device.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/util.h>
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
-#include <zmk/matrix.h>
 #include <zmk/keymap.h>
+#include <zmk/matrix.h>
 #include <zmk/pk_underglow_layer.h>
 
 #if !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
@@ -26,25 +26,27 @@ uint8_t pk_underglow_peripheral_synced_layer = 0;
 #define LAYER_ID(node) DT_PROP(node, layer_id)
 #define FADE_DELAY(node) DT_PROP(node, fade_delay)
 
-#define TRANSFORMED_RGB_LAYER(node)                                                                \
-    {COND_CODE_1(DT_NODE_HAS_PROP(node, bindings),                                                 \
-                 (LISTIFY(DT_PROP_LEN(node, bindings), ZMK_RGBMAP_EXTRACT_BINDING, (, ), node)),   \
-                 ())}
+#define TRANSFORMED_RGB_LAYER(node)                                                                                    \
+    {                                                                                                                  \
+        COND_CODE_1(DT_NODE_HAS_PROP(node, bindings),                                                                  \
+                    (LISTIFY(DT_PROP_LEN(node, bindings), ZMK_RGBMAP_EXTRACT_BINDING, (, ), node)), ())                \
+    }
 
-#define RGBMAP_VAR(_name, _opts)                                                                   \
-    static _opts struct zmk_behavior_binding _name[ZMK_RGBMAP_LAYERS_LEN][ZMK_KEYMAP_LEN] = {      \
+#define RGBMAP_VAR(_name, _opts)                                                                                       \
+    static _opts struct zmk_behavior_binding _name[ZMK_RGBMAP_LAYERS_LEN][ZMK_KEYMAP_LEN] = {                          \
         DT_INST_FOREACH_CHILD_STATUS_OKAY_SEP(0, TRANSFORMED_RGB_LAYER, (, ))};
 
 RGBMAP_VAR(zmk_rgbmap, COND_CODE_1(IS_ENABLED(CONFIG_ZMK_KEYMAP_SETTINGS_STORAGE), (), (const)))
 
 const int pixel_lookup_table[] = DT_INST_PROP(0, pixel_lookup);
 
-#define LAYER_IDS_PTR(node) (const int[])DT_PROP(node, layer_id)
+#define LAYER_IDS_PTR(node) (const int[]) DT_PROP(node, layer_id)
 #define LAYER_IDS_LEN_MACRO(node) DT_PROP_LEN(node, layer_id)
 #define LAYER_ANIMATED(node) DT_PROP(node, animated)
 
 static const int *zmk_rgbmap_ids[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, LAYER_IDS_PTR, (, ))};
-static const size_t zmk_rgbmap_ids_lens[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, LAYER_IDS_LEN_MACRO, (, ))};
+static const size_t zmk_rgbmap_ids_lens[ZMK_RGBMAP_LAYERS_LEN] = {
+    DT_INST_FOREACH_CHILD_SEP(0, LAYER_IDS_LEN_MACRO, (, ))};
 static int zmk_rgbmap_fds[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, FADE_DELAY, (, ))};
 static bool zmk_rgbmap_anis[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, LAYER_ANIMATED, (, ))};
 

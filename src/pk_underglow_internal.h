@@ -1,9 +1,9 @@
 #pragma once
 
-#include <zmk/endpoints.h>
-#include <zmk/behavior.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/led_strip.h>
+#include <zmk/behavior.h>
+#include <zmk/endpoints.h>
 #include <zmk/pk_underglow.h>
 
 #if !DT_HAS_CHOSEN(zmk_underglow)
@@ -19,11 +19,12 @@ struct zmk_behavior_binding;
 int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings, size_t rgbmap_len, uint8_t layer);
 
 #if CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION != -1
-    #define WHITE_SATURATION CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION
-#elif DT_HAS_COMPAT_STATUS_OKAY(zmk_pk_underglow_layer) && DT_NODE_HAS_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), white_saturation)
-    #define WHITE_SATURATION DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), white_saturation)
+#define WHITE_SATURATION CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION
+#elif DT_HAS_COMPAT_STATUS_OKAY(zmk_pk_underglow_layer) &&                                                             \
+    DT_NODE_HAS_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), white_saturation)
+#define WHITE_SATURATION DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), white_saturation)
 #else
-    #define WHITE_SATURATION 0
+#define WHITE_SATURATION 0
 #endif
 
 #ifndef CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS

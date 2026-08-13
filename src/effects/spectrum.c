@@ -1,8 +1,8 @@
 /**
  * Spectrum Effect
- * 
+ *
  * Visual Description:
- * A smooth transition through the entire color spectrum. 
+ * A smooth transition through the entire color spectrum.
  * The entire keyboard changes color simultaneously, slowly shifting from red to green to blue and back again.
  */
 #include "../pk_underglow_internal.h"

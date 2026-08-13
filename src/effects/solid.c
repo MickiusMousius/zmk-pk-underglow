@@ -1,6 +1,6 @@
 /**
  * Solid Effect
- * 
+ *
  * Visual Description:
  * A static, uniform color applied across the entire keyboard.
  * Provides a clean and consistent backlight without any animation.

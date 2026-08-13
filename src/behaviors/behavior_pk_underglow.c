@@ -6,13 +6,13 @@
 
 #define DT_DRV_COMPAT zmk_behavior_rgb_underglow
 
-#include <zephyr/device.h>
 #include <drivers/behavior.h>
+#include <zephyr/device.h>
 #include <zephyr/logging/log.h>
 
 #include <dt-bindings/zmk/rgb.h>
-#include <zmk/pk_underglow.h>
 #include <zmk/keymap.h>
+#include <zmk/pk_underglow.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
@@ -131,9 +131,8 @@ static const struct behavior_parameter_metadata metadata = {
 
 #endif // IS_ENABLED(CONFIG_ZMK_BEHAVIOR_METADATA)
 
-static int
-on_keymap_binding_convert_central_state_dependent_params(struct zmk_behavior_binding *binding,
-                                                         struct zmk_behavior_binding_event event) {
+static int on_keymap_binding_convert_central_state_dependent_params(struct zmk_behavior_binding *binding,
+                                                                    struct zmk_behavior_binding_event event) {
     switch (binding->param1) {
     case RGB_TOG_CMD: {
         bool state;
@@ -207,8 +206,7 @@ on_keymap_binding_convert_central_state_dependent_params(struct zmk_behavior_bin
     return 0;
 };
 
-static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
-                                     struct zmk_behavior_binding_event event) {
+static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding, struct zmk_behavior_binding_event event) {
     switch (binding->param1) {
     case RGB_TOG_CMD:
         return zmk_pk_underglow_toggle();
@@ -239,22 +237,19 @@ static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
     case RGB_EFR_CMD:
         return zmk_pk_underglow_cycle_effect(-1);
     case RGB_COLOR_HSB_CMD:
-        return zmk_pk_underglow_set_hsb((struct zmk_led_hsb){.h = (binding->param2 >> 16) & 0xFFFF,
-                                                              .s = (binding->param2 >> 8) & 0xFF,
-                                                              .b = binding->param2 & 0xFF});
+        return zmk_pk_underglow_set_hsb((struct zmk_led_hsb){
+            .h = (binding->param2 >> 16) & 0xFFFF, .s = (binding->param2 >> 8) & 0xFF, .b = binding->param2 & 0xFF});
     }
 
     return -ENOTSUP;
 }
 
-static int on_keymap_binding_released(struct zmk_behavior_binding *binding,
-                                      struct zmk_behavior_binding_event event) {
+static int on_keymap_binding_released(struct zmk_behavior_binding *binding, struct zmk_behavior_binding_event event) {
     return ZMK_BEHAVIOR_OPAQUE;
 }
 
 static const struct behavior_driver_api behavior_pk_underglow_driver_api = {
-    .binding_convert_central_state_dependent_params =
-        on_keymap_binding_convert_central_state_dependent_params,
+    .binding_convert_central_state_dependent_params = on_keymap_binding_convert_central_state_dependent_params,
     .binding_pressed = on_keymap_binding_pressed,
     .binding_released = on_keymap_binding_released,
     .locality = BEHAVIOR_LOCALITY_GLOBAL,

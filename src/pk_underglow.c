@@ -7,8 +7,8 @@
 #include <zephyr/device.h>
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
-#include <zephyr/settings/settings.h>
 #include <zephyr/pm/device.h>
+#include <zephyr/settings/settings.h>
 
 #include <math.h>
 #include <stdlib.h>
@@ -16,31 +16,29 @@
 
 #include <zephyr/logging/log.h>
 
-#include <zephyr/drivers/led_strip.h>
-#include <zephyr/drivers/gpio.h>
-#include <drivers/ext_power.h>
 #include <drivers/behavior.h>
+#include <drivers/ext_power.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/led_strip.h>
 
 #include <zmk/pk_underglow.h>
 #include <zmk/pk_underglow_layer.h>
 
 #include <zmk/activity.h>
 #include <zmk/behavior.h>
-#include <zmk/matrix.h>
-#include <zmk/hid_indicators.h>
-#include <zmk/usb.h>
 #include <zmk/event_manager.h>
 #include <zmk/events/activity_state_changed.h>
-#include <zmk/events/usb_conn_state_changed.h>
-#include <zmk/events/underglow_color_changed.h>
 #include <zmk/events/position_state_changed.h>
-#include <zmk/events/usb_conn_state_changed.h>
 #include <zmk/events/underglow_color_changed.h>
+#include <zmk/events/usb_conn_state_changed.h>
+#include <zmk/hid_indicators.h>
+#include <zmk/matrix.h>
+#include <zmk/usb.h>
 
-#include <zmk/workqueue.h>
 #include <zmk/events/layer_state_changed.h>
 #include <zmk/pk_split_sync.h>
 #include <zmk/pk_underglow_queue.h>
+#include <zmk/workqueue.h>
 
 #include <zmk/endpoints.h>
 #include <zmk/events/endpoint_changed.h>
@@ -66,14 +64,8 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 #include "pk_underglow_internal.h"
 
-
-
 uint16_t global_rainbow_hue = 0;
 uint16_t pixel_base_hues[STRIP_NUM_PIXELS];
-
-
-
-
 
 static const struct device *led_strip;
 
@@ -104,12 +96,11 @@ static const struct device *const ext_power = DEVICE_DT_GET(DT_INST(0, zmk_ext_p
 #endif
 
 #if DT_HAS_COMPAT_STATUS_OKAY(zmk_pk_underglow_layer)
-static const struct gpio_dt_spec power_gpio = GPIO_DT_SPEC_GET_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), power_gpios, {0});
+static const struct gpio_dt_spec power_gpio =
+    GPIO_DT_SPEC_GET_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), power_gpios, {0});
 #else
 static const struct gpio_dt_spec power_gpio = {0};
 #endif
-
-
 
 void pk_ug_task_render_frame_execute(void) {
     switch (state.current_effects[active_profile_index]) {
@@ -194,13 +185,9 @@ static int rgb_settings_set(const char *name, size_t len, settings_read_cb read_
 
 SETTINGS_STATIC_HANDLER_DEFINE(pk_underglow, "rgb/underglow", NULL, rgb_settings_set, NULL, NULL);
 
-static void zmk_pk_underglow_save_state_work(struct k_work *_work) {
-    pk_ug_queue_push(PK_UG_TASK_SAVE_SETTINGS);
-}
+static void zmk_pk_underglow_save_state_work(struct k_work *_work) { pk_ug_queue_push(PK_UG_TASK_SAVE_SETTINGS); }
 
-void pk_ug_task_save_settings_execute(void) {
-    settings_save_one("rgb/underglow/state", &state, sizeof(state));
-}
+void pk_ug_task_save_settings_execute(void) { settings_save_one("rgb/underglow/state", &state, sizeof(state)); }
 
 static struct k_work_delayable underglow_save_work;
 #endif
@@ -215,10 +202,14 @@ static int zmk_pk_underglow_init(void) {
         uint8_t midx = rgb_pixel_lookup(i);
         int r = midx / 12;
         int c = midx % 12;
-        if (r < min_row) min_row = r;
-        if (r > max_row) max_row = r;
-        if (c < min_col) min_col = c;
-        if (c > max_col) max_col = c;
+        if (r < min_row)
+            min_row = r;
+        if (r > max_row)
+            max_row = r;
+        if (c < min_col)
+            min_col = c;
+        if (c > max_col)
+            max_col = c;
     }
 
     if (STRIP_NUM_PIXELS > 0) {
@@ -255,10 +246,7 @@ static int zmk_pk_underglow_init(void) {
         LOG_INF("Power GPIO configured successfully");
     }
 
-    state = (struct pk_underglow_state){
-        animation_step : 0,
-        on : IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_ON_START)
-    };
+    state = (struct pk_underglow_state){animation_step : 0, on : IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_ON_START)};
 
     active_profile_index = get_active_profile();
 
@@ -398,7 +386,7 @@ int zmk_pk_underglow_off(void) {
 int zmk_pk_underglow_transient_off(void) {
     if (!led_strip)
         return -ENODEV;
-        
+
     if (!is_powered)
         return 0;
 
@@ -410,7 +398,8 @@ int zmk_pk_underglow_transient_off(void) {
 }
 
 int zmk_pk_underglow_calc_effect(int direction) {
-    return (state.current_effects[active_profile_index] + UNDERGLOW_EFFECT_NUMBER + direction) % UNDERGLOW_EFFECT_NUMBER;
+    return (state.current_effects[active_profile_index] + UNDERGLOW_EFFECT_NUMBER + direction) %
+           UNDERGLOW_EFFECT_NUMBER;
 }
 
 int zmk_pk_underglow_select_effect(int effect) {
@@ -423,14 +412,14 @@ int zmk_pk_underglow_select_effect(int effect) {
 
     state.current_effects[active_profile_index] = effect;
     state.animation_step = 0;
-    
+
     if (effect == UNDERGLOW_EFFECT_RAINBOW_RIPPLE || effect == UNDERGLOW_EFFECT_RAINBOW_TWINKLE) {
         global_rainbow_hue = state.colors[active_profile_index].h;
         for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
             pixel_base_hues[i] = state.colors[active_profile_index].h;
         }
     }
-    
+
     if (effect == UNDERGLOW_EFFECT_TWINKLE || effect == UNDERGLOW_EFFECT_RAINBOW_TWINKLE) {
         zmk_pk_underglow_effect_twinkle_reset();
     }
@@ -452,11 +441,7 @@ int zmk_pk_underglow_cycle_effect(int direction) {
     return zmk_pk_underglow_select_effect(zmk_pk_underglow_calc_effect(direction));
 }
 
-int zmk_pk_underglow_toggle(void) {
-    return state.on ? zmk_pk_underglow_off() : zmk_pk_underglow_on();
-}
-
-
+int zmk_pk_underglow_toggle(void) { return state.on ? zmk_pk_underglow_off() : zmk_pk_underglow_on(); }
 
 void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup) {
     LOG_INF("Setting pk underglow layer: %d. layer_enabled: %d, state.on: %d", layer, state.layer_enabled, state.on);
@@ -472,7 +457,7 @@ void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup) {
             }
             zmk_pk_underglow_transient_on();
         }
-        
+
         uint64_t uptime = k_uptime_get();
         if (uptime - power_on_uptime < PK_UNDERGLOW_POWER_STABILIZATION_MS) {
             k_timer_stop(&underglow_tick);
@@ -601,26 +586,22 @@ int zmk_pk_underglow_change_spd(int direction) {
     return zmk_pk_underglow_save_state();
 }
 
-#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE) ||                                          \
-    IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_USB)
+#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE) || IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_USB)
 struct pk_underglow_sleep_state {
     bool is_awake;
     bool rgb_state_before_sleeping;
 };
 
-static struct pk_underglow_sleep_state sleep_state = {
-    .is_awake = true,
-    .rgb_state_before_sleeping = false
-};
+static struct pk_underglow_sleep_state sleep_state = {.is_awake = true, .rgb_state_before_sleeping = false};
 
 void pk_ug_task_sync_state_execute(uint8_t layer, uint8_t state_directive) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-    uint32_t param1 = (state.colors[active_profile_index].h & 0xFFFF) | ((state.colors[active_profile_index].s & 0xFF) << 16) | ((state.colors[active_profile_index].b & 0xFF) << 24);
-    uint32_t param2 = (state.current_effects[active_profile_index] & 0xFF) | 
-                      ((state.effect_speeds[state.current_effects[active_profile_index]] & 0xFF) << 8) | 
-                      ((layer & 0xFF) << 16) | 
-                      ((state.on ? 1 : 0) << 24) | 
-                      ((state_directive & 0x03) << 25) |
+    uint32_t param1 = (state.colors[active_profile_index].h & 0xFFFF) |
+                      ((state.colors[active_profile_index].s & 0xFF) << 16) |
+                      ((state.colors[active_profile_index].b & 0xFF) << 24);
+    uint32_t param2 = (state.current_effects[active_profile_index] & 0xFF) |
+                      ((state.effect_speeds[state.current_effects[active_profile_index]] & 0xFF) << 8) |
+                      ((layer & 0xFF) << 16) | ((state.on ? 1 : 0) << 24) | ((state_directive & 0x03) << 25) |
                       ((state.layer_enabled ? 1 : 0) << 27);
 
     LOG_DBG("Central: Broadcasting ug_sync with layer %d, state_directive %d", layer, state_directive);
@@ -726,7 +707,7 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
 
     if (as_zmk_activity_state_changed(eh)) {
         enum zmk_activity_state state = zmk_activity_get_state();
-        
+
         bool should_handle = false;
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
         should_handle = true;
@@ -765,7 +746,8 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
     }
 
     if (as_zmk_position_state_changed(eh)) {
-        if (state.on && (state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_RIPPLE || state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_RAINBOW_RIPPLE)) {
+        if (state.on && (state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_RIPPLE ||
+                         state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_RAINBOW_RIPPLE)) {
             const struct zmk_position_state_changed *ev = as_zmk_position_state_changed(eh);
             if (ev->state && ev->source == ZMK_POSITION_STATE_CHANGE_SOURCE_LOCAL) {
                 uint8_t row = ev->position / 12;
@@ -839,7 +821,7 @@ static int zmk_pk_underglow_endpoint_changed(const zmk_event_t *eh) {
     if (active_profile_index != new_profile) {
         active_profile_index = new_profile;
         state.animation_step = 0;
-        
+
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
         pk_ug_queue_push_sync(pk_underglow_top_layer(), 0);
 #endif
@@ -861,14 +843,14 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
     uint8_t old_effect = state.current_effects[active_profile_index];
     state.current_effects[active_profile_index] = param2 & 0xFF;
     bool effect_changed = (old_effect != state.current_effects[active_profile_index]);
-    
+
     state.effect_speeds[state.current_effects[active_profile_index]] = (param2 >> 8) & 0xFF;
     uint8_t layer = (param2 >> 16) & 0xFF;
     state.on = (param2 >> 24) & 1;
     int state_directive = (param2 >> 25) & 3;
     state.layer_enabled = (param2 >> 27) & 1;
 
-    LOG_DBG("Peripheral: Extracted ug_sync state. Effect=%d, Hue=%d, Layer=%d, StateDirective=%d", 
+    LOG_DBG("Peripheral: Extracted ug_sync state. Effect=%d, Hue=%d, Layer=%d, StateDirective=%d",
             state.current_effects[active_profile_index], state.colors[active_profile_index].h, layer, state_directive);
 
     // Apply the layer if the effect relies on it
@@ -896,9 +878,7 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
 
 SYS_INIT(zmk_pk_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 
-struct zmk_led_hsb zmk_pk_underglow_get_color(void) {
-    return state.colors[active_profile_index];
-}
+struct zmk_led_hsb zmk_pk_underglow_get_color(void) { return state.colors[active_profile_index]; }
 
 int zmk_pk_underglow_hsb_to_hex(struct zmk_led_hsb hsb) {
     struct led_rgb rgb = hsb_to_rgb(hsb);
@@ -919,10 +899,9 @@ static int pk_underglow_pm_action(const struct device *dev, enum pm_device_actio
     return 0;
 }
 
-static int pk_underglow_pm_init(const struct device *dev) {
-    return 0;
-}
+static int pk_underglow_pm_init(const struct device *dev) { return 0; }
 
 PM_DEVICE_DEFINE(pk_underglow_pm, pk_underglow_pm_action);
-DEVICE_DEFINE(pk_underglow_pm, "pk_underglow_pm", pk_underglow_pm_init, PM_DEVICE_GET(pk_underglow_pm), NULL, NULL, POST_KERNEL, CONFIG_APPLICATION_INIT_PRIORITY, NULL);
+DEVICE_DEFINE(pk_underglow_pm, "pk_underglow_pm", pk_underglow_pm_init, PM_DEVICE_GET(pk_underglow_pm), NULL, NULL,
+              POST_KERNEL, CONFIG_APPLICATION_INIT_PRIORITY, NULL);
 #endif

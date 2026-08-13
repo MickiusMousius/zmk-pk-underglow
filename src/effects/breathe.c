@@ -1,6 +1,6 @@
 /**
  * Breathe Effect
- * 
+ *
  * Visual Description:
  * A smooth, pulsing animation where the entire keyboard gracefully fades in and out.
  * The brightness oscillates between a minimum and maximum threshold to simulate a slow, rhythmic "breathing" motion.

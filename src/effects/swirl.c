@@ -1,9 +1,10 @@
 /**
  * Swirl Effect
- * 
+ *
  * Visual Description:
  * A rolling wave of colors that flows continuously across the keyboard.
- * Creates a dynamic gradient where the hue shifts based on the physical position of the LEDs, simulating a flowing river of rainbow light.
+ * Creates a dynamic gradient where the hue shifts based on the physical position of the LEDs, simulating a flowing
+ * river of rainbow light.
  */
 #include "../pk_underglow_internal.h"
 

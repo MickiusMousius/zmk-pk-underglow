@@ -24,8 +24,7 @@ void pk_ug_queue_push(pk_ug_task_type_t type) {
         // (We must preserve SYNC_STATE so the peripheral is told to sleep before we cut power!)
         int new_head = 0;
         for (int i = 0; i < queue_head; i++) {
-            if (task_queue[i].type == PK_UG_TASK_SAVE_SETTINGS ||
-                task_queue[i].type == PK_UG_TASK_SYNC_STATE) {
+            if (task_queue[i].type == PK_UG_TASK_SAVE_SETTINGS || task_queue[i].type == PK_UG_TASK_SYNC_STATE) {
                 task_queue[new_head++] = task_queue[i];
             }
         }
@@ -90,41 +89,38 @@ static void ug_worker_thread(void *p1, void *p2, void *p3) {
             k_mutex_unlock(&queue_mutex);
             continue;
         }
-        
+
         // FIFO pop from index 0
         struct pk_ug_task current_task = task_queue[0];
         for (int i = 1; i < queue_head; i++) {
             task_queue[i - 1] = task_queue[i];
         }
         queue_head--;
-        
+
         k_mutex_unlock(&queue_mutex);
 
         switch (current_task.type) {
-            case PK_UG_TASK_POWER_ON:
-                pk_ug_task_power_on_execute();
-                break;
-            case PK_UG_TASK_POWER_OFF:
-                pk_ug_task_power_off_execute();
-                break;
-            case PK_UG_TASK_RENDER_FRAME:
-                pk_ug_task_render_frame_execute();
-                break;
-            case PK_UG_TASK_SYNC_STATE:
-                pk_ug_task_sync_state_execute(current_task.payload.sync.layer, current_task.payload.sync.state_directive);
-                break;
-            case PK_UG_TASK_SAVE_SETTINGS:
-                pk_ug_task_save_settings_execute();
-                break;
+        case PK_UG_TASK_POWER_ON:
+            pk_ug_task_power_on_execute();
+            break;
+        case PK_UG_TASK_POWER_OFF:
+            pk_ug_task_power_off_execute();
+            break;
+        case PK_UG_TASK_RENDER_FRAME:
+            pk_ug_task_render_frame_execute();
+            break;
+        case PK_UG_TASK_SYNC_STATE:
+            pk_ug_task_sync_state_execute(current_task.payload.sync.layer, current_task.payload.sync.state_directive);
+            break;
+        case PK_UG_TASK_SAVE_SETTINGS:
+            pk_ug_task_save_settings_execute();
+            break;
         }
     }
 }
 
 int pk_ug_queue_init(void) {
-    k_thread_create(&ug_thread_data, ug_thread_stack,
-                    K_THREAD_STACK_SIZEOF(ug_thread_stack),
-                    ug_worker_thread,
-                    NULL, NULL, NULL,
-                    K_LOWEST_APPLICATION_THREAD_PRIO, 0, K_NO_WAIT);
+    k_thread_create(&ug_thread_data, ug_thread_stack, K_THREAD_STACK_SIZEOF(ug_thread_stack), ug_worker_thread, NULL,
+                    NULL, NULL, K_LOWEST_APPLICATION_THREAD_PRIO, 0, K_NO_WAIT);
     return 0;
 }
