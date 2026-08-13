@@ -11,6 +11,10 @@
 #include <zmk/matrix.h>
 #include <zmk/pk_underglow_layer.h>
 
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/sys/util.h>
+#include <zmk/keymap.h>
+
 #include <zephyr/logging/log.h>
 LOG_MODULE_DECLARE(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);
 
@@ -84,3 +88,81 @@ void zmk_pk_underglow_effect_layer(void) {
         zmk_pk_underglow_transient_off();
     }
 }
+#if !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+uint8_t pk_underglow_peripheral_synced_layer = 0;
+#endif
+
+#define DT_DRV_COMPAT zmk_pk_underglow_layer
+#if DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT)
+
+#define LAYER_ID(node) DT_PROP(node, layer_id)
+#define FADE_DELAY(node) DT_PROP(node, fade_delay)
+
+#define TRANSFORMED_RGB_LAYER(node)                                                                                    \
+    {                                                                                                                  \
+        COND_CODE_1(DT_NODE_HAS_PROP(node, bindings),                                                                  \
+                    (LISTIFY(DT_PROP_LEN(node, bindings), ZMK_RGBMAP_EXTRACT_BINDING, (, ), node)), ())                \
+    }
+
+#define RGBMAP_VAR(_name, _opts)                                                                                       \
+    static _opts struct zmk_behavior_binding _name[ZMK_RGBMAP_LAYERS_LEN][ZMK_KEYMAP_LEN] = {                          \
+        DT_INST_FOREACH_CHILD_STATUS_OKAY_SEP(0, TRANSFORMED_RGB_LAYER, (, ))};
+
+RGBMAP_VAR(zmk_rgbmap, COND_CODE_1(IS_ENABLED(CONFIG_ZMK_KEYMAP_SETTINGS_STORAGE), (), (const)))
+
+const int pixel_lookup_table[] = DT_INST_PROP(0, pixel_lookup);
+
+#define LAYER_IDS_PTR(node) (const int[]) DT_PROP(node, layer_id)
+#define LAYER_IDS_LEN_MACRO(node) DT_PROP_LEN(node, layer_id)
+#define LAYER_ANIMATED(node) DT_PROP(node, animated)
+
+static const int *zmk_rgbmap_ids[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, LAYER_IDS_PTR, (, ))};
+static const size_t zmk_rgbmap_ids_lens[ZMK_RGBMAP_LAYERS_LEN] = {
+    DT_INST_FOREACH_CHILD_SEP(0, LAYER_IDS_LEN_MACRO, (, ))};
+static int zmk_rgbmap_fds[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, FADE_DELAY, (, ))};
+static bool zmk_rgbmap_anis[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, LAYER_ANIMATED, (, ))};
+
+int rgb_pixel_lookup(int idx) { return pixel_lookup_table[idx]; };
+
+int zmk_rgbmap_id(uint8_t layer) {
+    for (uint8_t i = 0; i < ZMK_RGBMAP_LAYERS_LEN; i++) {
+        for (size_t j = 0; j < zmk_rgbmap_ids_lens[i]; j++) {
+            if (zmk_rgbmap_ids[i][j] == layer) {
+                return i;
+            }
+        }
+    }
+    return -1;
+}
+
+int zmk_rgbmap_fade_delay(uint8_t layer) { return zmk_rgbmap_fds[zmk_rgbmap_id(layer)]; }
+
+bool zmk_rgbmap_is_animated(uint8_t layer) { return zmk_rgbmap_anis[zmk_rgbmap_id(layer)]; }
+
+const struct zmk_behavior_binding *pk_underglow_get_bindings(uint8_t layer) {
+    int rgblayer = zmk_rgbmap_id(layer);
+    if (rgblayer == -1) {
+        return NULL;
+    } else {
+        return zmk_rgbmap[rgblayer];
+    }
+}
+
+uint8_t pk_underglow_top_layer_with_state(uint32_t state_to_test) {
+    for (int8_t layer = ZMK_KEYMAP_LAYERS_LEN - 1; layer > 0; layer--) {
+        if (state_to_test & BIT(layer)) {
+            return layer;
+        }
+    }
+    // return default layer (0)
+    return 0;
+}
+
+uint8_t pk_underglow_top_layer(void) {
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    return zmk_keymap_highest_layer_active();
+#else
+    return pk_underglow_peripheral_synced_layer;
+#endif
+}
+#endif /* DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT) */
