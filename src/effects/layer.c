@@ -14,7 +14,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_DECLARE(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);
 
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 
 static struct led_rgb hex_to_rgb(uint8_t r, uint8_t g, uint8_t b) {
     struct zmk_led_hsb hsb = state.colors[active_profile_index];
@@ -88,4 +87,3 @@ void zmk_pk_underglow_effect_layer(void) {
     }
 }
 
-#endif // IS_ENABLED(UNDERGLOW_LAYER_ENABLED)

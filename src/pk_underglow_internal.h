@@ -13,13 +13,10 @@
 #define STRIP_CHOSEN DT_CHOSEN(zmk_underglow)
 #define STRIP_NUM_PIXELS DT_PROP(STRIP_CHOSEN, chain_length)
 
-#if DT_HAS_COMPAT_STATUS_OKAY(zmk_pk_underglow_layer) && IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_LAYER)
-#define UNDERGLOW_LAYER_ENABLED 1
 void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup);
 int zmk_pk_underglow_transient_off(void);
 struct zmk_behavior_binding;
 int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings, size_t rgbmap_len, uint8_t layer);
-#endif
 
 #if CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION != -1
     #define WHITE_SATURATION CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION
@@ -44,9 +41,7 @@ enum pk_underglow_effect {
     UNDERGLOW_EFFECT_RAINBOW_RIPPLE,
     UNDERGLOW_EFFECT_TWINKLE,
     UNDERGLOW_EFFECT_RAINBOW_TWINKLE,
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     UNDERGLOW_EFFECT_LAYER_INDICATORS,
-#endif
     UNDERGLOW_EFFECT_NUMBER // Used to track number of underglow effects
 };
 
@@ -88,6 +83,4 @@ void zmk_pk_underglow_effect_rainbow_ripple(void);
 void zmk_pk_underglow_effect_twinkle(void);
 void zmk_pk_underglow_effect_rainbow_twinkle(void);
 void zmk_pk_underglow_effect_pinwheel(void);
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 void zmk_pk_underglow_effect_layer(void);
-#endif

@@ -143,11 +143,9 @@ void pk_ug_task_render_frame_execute(void) {
     case UNDERGLOW_EFFECT_PINWHEEL:
         zmk_pk_underglow_effect_pinwheel();
         break;
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     case UNDERGLOW_EFFECT_LAYER_INDICATORS:
         zmk_pk_underglow_effect_layer();
         break;
-#endif
     }
 
     int err = led_strip_update_rgb(led_strip, pixels, STRIP_NUM_PIXELS);
@@ -182,11 +180,9 @@ static int rgb_settings_set(const char *name, size_t len, settings_read_cb read_
             } else {
                 zmk_pk_underglow_transient_off();
             }
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
             if (state.layer_enabled) {
                 zmk_pk_underglow_set_layer(pk_underglow_top_layer(), true);
             }
-#endif
             return 0;
         }
 
@@ -290,11 +286,9 @@ static int zmk_pk_underglow_init(void) {
     if (state.on) {
         zmk_pk_underglow_transient_on();
     }
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state.layer_enabled) {
         zmk_pk_underglow_set_layer(pk_underglow_top_layer(), true);
     }
-#endif
     return 0;
 }
 
@@ -317,11 +311,9 @@ int zmk_pk_underglow_get_state(bool *on_off) {
 
 int zmk_pk_underglow_on(void) {
     zmk_pk_underglow_transient_on();
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_LAYER_INDICATORS) {
         state.layer_enabled = true;
     }
-#endif
     return zmk_pk_underglow_save_state();
 }
 
@@ -443,7 +435,6 @@ int zmk_pk_underglow_select_effect(int effect) {
         zmk_pk_underglow_effect_twinkle_reset();
     }
 
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     state.layer_enabled = (effect == UNDERGLOW_EFFECT_LAYER_INDICATORS);
 
     LOG_INF("Selected effect: %d, layer_enabled: %d, state.on: %d", effect, state.layer_enabled, state.on);
@@ -454,7 +445,6 @@ int zmk_pk_underglow_select_effect(int effect) {
         LOG_INF("Restarting animation timer for effect %d", effect);
         zmk_pk_underglow_transient_on();
     }
-#endif
     return zmk_pk_underglow_save_state();
 }
 
@@ -466,7 +456,6 @@ int zmk_pk_underglow_toggle(void) {
     return state.on ? zmk_pk_underglow_off() : zmk_pk_underglow_on();
 }
 
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 
 
 void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup) {
@@ -509,7 +498,6 @@ void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup) {
             zmk_pk_underglow_transient_off();
     }
 }
-#endif /* IS_ENABLED(UNDERGLOW_LAYER_ENABLED) */
 
 int zmk_pk_underglow_set_hsb(struct zmk_led_hsb color) {
     if (color.h > HUE_MAX || color.s > SAT_MAX || color.b > BRT_MAX) {
@@ -518,11 +506,9 @@ int zmk_pk_underglow_set_hsb(struct zmk_led_hsb color) {
 
     state.colors[active_profile_index] = color;
 
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state.layer_enabled) {
         zmk_pk_underglow_set_layer(pk_underglow_top_layer(), false);
     }
-#endif
 
     return 0;
 }
@@ -565,11 +551,9 @@ int zmk_pk_underglow_change_hue(int direction) {
 
     state.colors[active_profile_index] = zmk_pk_underglow_calc_hue(direction);
 
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state.layer_enabled) {
         zmk_pk_underglow_set_layer(pk_underglow_top_layer(), false);
     }
-#endif
 
     return zmk_pk_underglow_save_state();
 }
@@ -580,11 +564,9 @@ int zmk_pk_underglow_change_sat(int direction) {
 
     state.colors[active_profile_index] = zmk_pk_underglow_calc_sat(direction);
 
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state.layer_enabled) {
         zmk_pk_underglow_set_layer(pk_underglow_top_layer(), false);
     }
-#endif
 
     return zmk_pk_underglow_save_state();
 }
@@ -595,11 +577,9 @@ int zmk_pk_underglow_change_brt(int direction) {
 
     state.colors[active_profile_index] = zmk_pk_underglow_calc_brt(direction);
 
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state.layer_enabled) {
         zmk_pk_underglow_set_layer(pk_underglow_top_layer(), false);
     }
-#endif
 
     return zmk_pk_underglow_save_state();
 }
@@ -622,7 +602,7 @@ int zmk_pk_underglow_change_spd(int direction) {
 }
 
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE) ||                                          \
-    IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_USB) || IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
+    IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_USB)
 struct pk_underglow_sleep_state {
     bool is_awake;
     bool rgb_state_before_sleeping;
@@ -719,12 +699,10 @@ static int pk_underglow_auto_state(bool target_wake_state) {
 #endif
 
     if (sleep_state.is_awake) {
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
         if (state.layer_enabled) {
             zmk_pk_underglow_set_layer(pk_underglow_top_layer(), true);
             return 0;
         }
-#endif
         if (sleep_state.rgb_state_before_sleeping) {
             return zmk_pk_underglow_transient_on();
         } else {
@@ -736,7 +714,7 @@ static int pk_underglow_auto_state(bool target_wake_state) {
     }
 }
 
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+#if !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 extern uint8_t pk_underglow_peripheral_synced_layer;
 void zmk_pk_underglow_set_peripheral_layer(uint8_t layer) {
     pk_underglow_peripheral_synced_layer = layer;
@@ -762,7 +740,6 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
         }
     }
 
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
     if (as_zmk_layer_state_changed(eh)) {
         if (!sleep_state.is_awake) {
@@ -786,7 +763,6 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
         }
         return 0;
     }
-#endif /* UNDERGLOW_LAYER_ENABLED */
 
     if (as_zmk_position_state_changed(eh)) {
         if (state.on && (state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_RIPPLE || state.current_effects[active_profile_index] == UNDERGLOW_EFFECT_RAINBOW_RIPPLE)) {
@@ -837,7 +813,6 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
 ZMK_LISTENER(pk_underglow, pk_underglow_event_listener);
 #endif // IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE) ||
        // IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_USB) ||
-       // IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
 ZMK_SUBSCRIPTION(pk_underglow, zmk_activity_state_changed);
@@ -853,12 +828,10 @@ ZMK_SUBSCRIPTION(pk_underglow, zmk_usb_conn_state_changed);
 ZMK_SUBSCRIPTION(pk_underglow, zmk_split_peripheral_status_changed);
 #endif
 
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
 ZMK_SUBSCRIPTION(pk_underglow, zmk_layer_state_changed);
 #endif
 ZMK_SUBSCRIPTION(pk_underglow, zmk_underglow_color_changed);
-#endif
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
 static int zmk_pk_underglow_endpoint_changed(const zmk_event_t *eh) {
@@ -899,11 +872,9 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
             state.current_effects[active_profile_index], state.colors[active_profile_index].h, layer, state_directive);
 
     // Apply the layer if the effect relies on it
-#if IS_ENABLED(UNDERGLOW_LAYER_ENABLED)
     if (state_directive != 2) {
         zmk_pk_underglow_set_peripheral_layer(layer);
     }
-#endif
 
     // Apply the state directive
     if (state_directive == 1) {
