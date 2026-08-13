@@ -134,8 +134,8 @@ static uint16_t pixel_base_hues[STRIP_NUM_PIXELS];
 #define CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS 5
 #endif
 
-static float center_row = 0.0f;
-static float center_col = 0.0f;
+static int center_row = 0;
+static int center_col = 0;
 
 struct pk_twinkle {
     uint8_t led_index;
@@ -195,11 +195,11 @@ static const uint16_t ripple_distance_lut[8][23] = {
     {700, 707, 728, 762, 806, 860, 922, 990, 1063, 1140, 1221, 1304, 1389, 1476, 1565, 1655, 1746, 1838, 1931, 2025, 2119, 2214, 2309},
 };
 
-static inline float pk_get_ripple_distance(int dr, int dc) {
+static inline uint16_t pk_get_ripple_distance(int dr, int dc) {
     int abs_r = abs(dr);
     int abs_c = abs(dc);
-    if (abs_r > 7 || abs_c > 22) return 99.0f;
-    return ripple_distance_lut[abs_r][abs_c] / 100.0f;
+    if (abs_r > 7 || abs_c > 22) return 9900;
+    return ripple_distance_lut[abs_r][abs_c];
 }
 
 /**
@@ -288,52 +288,34 @@ static struct zmk_led_hsb hsb_scale_zero_max(struct zmk_led_hsb hsb) {
 }
 
 static struct led_rgb hsb_to_rgb(struct zmk_led_hsb hsb) {
-    float r = 0, g = 0, b = 0;
+    uint8_t r = 0, g = 0, b = 0;
 
-    uint8_t i = hsb.h / 60;
-    float v = hsb.b / ((float)BRT_MAX);
-    float s = hsb.s / ((float)SAT_MAX);
-    float f = hsb.h / ((float)HUE_MAX) * 6 - i;
-    float p = v * (1 - s);
-    float q = v * (1 - f * s);
-    float t = v * (1 - (1 - f) * s);
+    // Scale S and V to 0-255
+    uint32_t s = (hsb.s * 255) / SAT_MAX;
+    uint32_t v = (hsb.b * 255) / BRT_MAX;
 
-    switch (i % 6) {
-    case 0:
-        r = v;
-        g = t;
-        b = p;
-        break;
-    case 1:
-        r = q;
-        g = v;
-        b = p;
-        break;
-    case 2:
-        r = p;
-        g = v;
-        b = t;
-        break;
-    case 3:
-        r = p;
-        g = q;
-        b = v;
-        break;
-    case 4:
-        r = t;
-        g = p;
-        b = v;
-        break;
-    case 5:
-        r = v;
-        g = p;
-        b = q;
-        break;
+    if (s == 0) {
+        r = g = b = v;
+    } else {
+        uint32_t h = (hsb.h * 255) / HUE_MAX;
+        uint32_t region = h / 43;
+        uint32_t remainder = (h - (region * 43)) * 6;
+
+        uint32_t p = (v * (255 - s)) >> 8;
+        uint32_t q = (v * (255 - ((s * remainder) >> 8))) >> 8;
+        uint32_t t = (v * (255 - ((s * (255 - remainder)) >> 8))) >> 8;
+
+        switch (region) {
+            case 0: r = v; g = t; b = p; break;
+            case 1: r = q; g = v; b = p; break;
+            case 2: r = p; g = v; b = t; break;
+            case 3: r = p; g = q; b = v; break;
+            case 4: r = t; g = p; b = v; break;
+            default: r = v; g = p; b = q; break;
+        }
     }
 
-    struct led_rgb rgb = {r : r * 255, g : g * 255, b : b * 255};
-
-    return rgb;
+    return (struct led_rgb){ .r = r, .g = g, .b = b };
 }
 
 static void zmk_pk_underglow_effect_solid(void) {
@@ -397,60 +379,14 @@ static void zmk_pk_underglow_effect_swirl(void) {
     state.animation_step = state.animation_step % HUE_MAX;
 }
 
-static void zmk_pk_underglow_effect_ripple(void) {
+static void process_ripples(bool is_rainbow) {
     uint32_t now = k_uptime_get_32();
     struct zmk_led_hsb base_hsb = state.colors[active_profile_index];
     
-    // Dim base color
-    base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
-
-    
-    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        uint8_t midx = rgb_pixel_lookup(i);
-        int p_row = midx / 12;
-        int p_col = midx % 12;
-        
-        uint8_t peak_b = base_hsb.b;
-        
-        for (int r = 0; r < MAX_RIPPLES; r++) {
-            if (!ripples[r].active) continue;
-            uint32_t elapsed = now - ripples[r].start_time;
-            
-            // Animation speed governs how fast it expands
-            float speed_factor = state.effect_speeds[state.current_effects[active_profile_index]] * 0.6f; 
-            float current_radius = (float)elapsed * speed_factor / 100.0f;
-            float max_radius = 12.0f; // Max distance across one half of keyboard
-            
-            if (current_radius > max_radius) {
-                ripples[r].active = false;
-                continue;
-            }
-            
-            float dist = pk_get_ripple_distance(p_row - ripples[r].row, p_col - ripples[r].col);
-            float thickness = 2.0f;
-            float dist_from_ring = fabsf(current_radius - dist);
-            
-            if (dist_from_ring < thickness) {
-                float intensity = 1.0f - (dist_from_ring / thickness);
-                float fade = 1.0f - (current_radius / max_radius);
-                
-                uint8_t ripple_b = (uint8_t)(state.colors[active_profile_index].b * intensity * fade);
-                if (ripple_b > peak_b) peak_b = ripple_b;
-            }
-        }
-        
-        struct zmk_led_hsb pixel_hsb = state.colors[active_profile_index];
-        pixel_hsb.b = peak_b;
-        pixels[i] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
+    if (is_rainbow) {
+        // Global rainbow hue updates on every tick like the spectrum effect
+        global_rainbow_hue = (global_rainbow_hue + state.effect_speeds[state.current_effects[active_profile_index]]) % HUE_MAX;
     }
-}
-
-static void zmk_pk_underglow_effect_rainbow_ripple(void) {
-    uint32_t now = k_uptime_get_32();
-    struct zmk_led_hsb base_hsb = state.colors[active_profile_index];
-    
-    // Global rainbow hue updates on every tick like the spectrum effect
-    global_rainbow_hue = (global_rainbow_hue + state.effect_speeds[state.current_effects[active_profile_index]]) % HUE_MAX;
     
     // Dim base color
     base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
@@ -461,49 +397,72 @@ static void zmk_pk_underglow_effect_rainbow_ripple(void) {
         int p_col = midx % 12;
         
         uint8_t peak_b = base_hsb.b;
-        uint16_t peak_hue = pixel_base_hues[i]; // Default to the LED's stored base hue
+        uint16_t peak_hue = is_rainbow ? pixel_base_hues[i] : 0; 
         
         for (int r = 0; r < MAX_RIPPLES; r++) {
             if (!ripples[r].active) continue;
             uint32_t elapsed = now - ripples[r].start_time;
             
             // Animation speed governs how fast it expands
-            float speed_factor = state.effect_speeds[state.current_effects[active_profile_index]] * 0.6f; 
-            float current_radius = (float)elapsed * speed_factor / 100.0f;
-            float max_radius = 12.0f; // Max distance across one half of keyboard
+            // elapsed is in ms. speed_factor * 60 (to replace 0.6f * 100).
+            uint32_t current_radius = (elapsed * state.effect_speeds[state.current_effects[active_profile_index]] * 60) / 100;
+            uint32_t max_radius = 1200; // Max distance across one half of keyboard (12.0f * 100)
             
             if (current_radius > max_radius) {
                 ripples[r].active = false;
                 continue;
             }
             
-            float dist = pk_get_ripple_distance(p_row - ripples[r].row, p_col - ripples[r].col);
-            float thickness = 2.0f;
-            float dist_from_ring = fabsf(current_radius - dist);
+            uint16_t dist = pk_get_ripple_distance(p_row - ripples[r].row, p_col - ripples[r].col);
+            uint32_t thickness = 200; // 2.0f * 100
+            
+            uint32_t dist_from_ring = (current_radius > dist) ? (current_radius - dist) : (dist - current_radius);
             
             if (dist_from_ring < thickness) {
-                float intensity = 1.0f - (dist_from_ring / thickness);
-                float fade = 1.0f - (current_radius / max_radius);
+                // intensity: 0 to 100
+                uint32_t intensity = 100 - ((dist_from_ring * 100) / thickness);
+                // fade: 0 to 100
+                uint32_t fade = 100 - ((current_radius * 100) / max_radius);
                 
-                uint8_t ripple_b = (uint8_t)(state.colors[active_profile_index].b * intensity * fade);
+                uint8_t ripple_b = (uint8_t)((state.colors[active_profile_index].b * intensity * fade) / 10000);
+                
                 if (ripple_b > peak_b) {
                     peak_b = ripple_b;
-                    peak_hue = ripples[r].hue; // Absorb the wave's hue
-                    pixel_base_hues[i] = ripples[r].hue; // Store the hue persistently
+                    if (is_rainbow) {
+                        peak_hue = ripples[r].hue; // Absorb the wave's hue
+                        pixel_base_hues[i] = ripples[r].hue; // Store the hue persistently
+                    }
                 }
             }
         }
         
         struct zmk_led_hsb pixel_hsb = state.colors[active_profile_index];
-        pixel_hsb.h = peak_hue;
+        if (is_rainbow) {
+            pixel_hsb.h = peak_hue;
+        }
         pixel_hsb.b = peak_b;
         pixels[i] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
     }
 }
 
-static void zmk_pk_underglow_effect_twinkle(void) {
+static void zmk_pk_underglow_effect_ripple(void) {
+    process_ripples(false);
+}
+
+static void zmk_pk_underglow_effect_rainbow_ripple(void) {
+    process_ripples(true);
+}
+
+
+static void process_twinkles(bool is_rainbow) {
     uint32_t now = k_uptime_get_32();
     struct zmk_led_hsb base_hsb = state.colors[active_profile_index];
+    
+    if (is_rainbow) {
+        // Global rainbow hue updates on every tick like the spectrum effect
+        global_rainbow_hue = (global_rainbow_hue + state.effect_speeds[state.current_effects[active_profile_index]]) % HUE_MAX;
+        base_hsb.h = global_rainbow_hue;
+    }
     
     // Dim base color
     base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
@@ -522,57 +481,7 @@ static void zmk_pk_underglow_effect_twinkle(void) {
                 twinkles[i].start_time = now;
                 // 2000ms / speed + random offset (doubled from original)
                 twinkles[i].duration = (4000 / state.effect_speeds[state.current_effects[active_profile_index]]) + (sys_rand32_get() % 2000);
-                twinkles[i].active = true;
-            }
-            continue;
-        }
-        
-        uint32_t elapsed = now - twinkles[i].start_time;
-        if (elapsed >= twinkles[i].duration) {
-            twinkles[i].active = false;
-            continue;
-        }
-        
-        uint32_t lut_index = (elapsed * 32) / twinkles[i].duration;
-        if (lut_index > 31) lut_index = 31;
-        
-        uint8_t added_b = pk_get_twinkle_sin(lut_index);
-        uint8_t twinkle_b = CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS + (added_b * (100 - CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS)) / 100;
-        
-        // Scale to global brightness
-        twinkle_b = (uint8_t)((state.colors[active_profile_index].b * twinkle_b) / 100);
-        
-        struct zmk_led_hsb pixel_hsb = state.colors[active_profile_index];
-        pixel_hsb.b = twinkle_b;
-        
-        pixels[twinkles[i].led_index] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
-    }
-}
-
-static void zmk_pk_underglow_effect_rainbow_twinkle(void) {
-    uint32_t now = k_uptime_get_32();
-    struct zmk_led_hsb base_hsb = state.colors[active_profile_index];
-    
-    // Global rainbow hue updates on every tick like the spectrum effect
-    global_rainbow_hue = (global_rainbow_hue + state.effect_speeds[state.current_effects[active_profile_index]]) % HUE_MAX;
-    
-    // Dim base color and apply the dynamic rainbow hue
-    base_hsb.h = global_rainbow_hue;
-    base_hsb.b = (base_hsb.b * CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS) / 100;
-    struct led_rgb base_rgb = hsb_to_rgb(hsb_scale_min_max(base_hsb));
-    
-    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        pixels[i] = base_rgb;
-    }
-    
-    for (int i = 0; i < CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX; i++) {
-        if (!twinkles[i].active) {
-            // Randomly start a new twinkle
-            if ((sys_rand32_get() % 100) < 5) {
-                twinkles[i].led_index = sys_rand32_get() % STRIP_NUM_PIXELS;
-                twinkles[i].start_time = now;
-                twinkles[i].duration = (4000 / state.effect_speeds[state.current_effects[active_profile_index]]) + (sys_rand32_get() % 2000);
-                twinkles[i].hue = global_rainbow_hue; // Capture the current ambient hue
+                twinkles[i].hue = is_rainbow ? global_rainbow_hue : state.colors[active_profile_index].h;
                 twinkles[i].active = true;
             }
             continue;
@@ -592,19 +501,27 @@ static void zmk_pk_underglow_effect_rainbow_twinkle(void) {
         
         // If the added brightness is essentially 0, it means the star is at the ambient level.
         // It should assume the background color (which we painted in the loop above).
-        if (added_b == 0) {
+        if (added_b == 0 && is_rainbow) {
             continue;
         }
         
-        struct zmk_led_hsb pixel_hsb = state.colors[active_profile_index];
-        pixel_hsb.h = twinkles[i].hue; // Use the star's captured hue
-        
         // Scale to global brightness
         twinkle_b = (uint8_t)((state.colors[active_profile_index].b * twinkle_b) / 100);
+        
+        struct zmk_led_hsb pixel_hsb = state.colors[active_profile_index];
+        pixel_hsb.h = twinkles[i].hue;
         pixel_hsb.b = twinkle_b;
         
         pixels[twinkles[i].led_index] = hsb_to_rgb(hsb_scale_min_max(pixel_hsb));
     }
+}
+
+static void zmk_pk_underglow_effect_twinkle(void) {
+    process_twinkles(false);
+}
+
+static void zmk_pk_underglow_effect_rainbow_twinkle(void) {
+    process_twinkles(true);
 }
 
 static void zmk_pk_underglow_effect_pinwheel(void) {
@@ -619,8 +536,8 @@ static void zmk_pk_underglow_effect_pinwheel(void) {
         int p_row = midx / 12;
         int p_col = midx % 12;
         
-        int dr = p_row - (int)center_row;
-        int dc = p_col - (int)center_col;
+        int dr = p_row - center_row;
+        int dc = p_col - center_col;
         uint16_t angle_hue = pk_get_pinwheel_angle(dr, dc);
         
         struct zmk_led_hsb pixel_hsb = state.colors[active_profile_index];
@@ -785,12 +702,12 @@ static int zmk_pk_underglow_init(void) {
     if (STRIP_NUM_PIXELS > 0) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
         // Central side (or unibody): Top Left
-        center_row = (float)min_row;
-        center_col = (float)min_col;
+        center_row = min_row;
+        center_col = min_col;
 #else
         // Peripheral side: Top Right
-        center_row = (float)min_row;
-        center_col = (float)max_col + 1.0f;
+        center_row = min_row;
+        center_col = max_col + 1;
 #endif
     }
 
@@ -1385,7 +1302,7 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
         const struct zmk_underglow_color_changed *ev = as_zmk_underglow_color_changed(eh);
         uint8_t layer = pk_underglow_top_layer();
         LOG_DBG("refresh layers %d, current: %d, wakeup: %d", ev->layers, layer, ev->wakeup);
-        if ((ev->layers & (BIT(layer))) == BIT(layer)) {
+        if (ev->layers & BIT(layer)) {
             zmk_pk_underglow_set_layer(pk_underglow_top_layer(), ev->wakeup);
         }
         return 0;
