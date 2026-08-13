@@ -786,7 +786,7 @@ static int zmk_pk_underglow_init(void) {
 #else
         // Peripheral side: Top Right
         center_row = (float)min_row;
-        center_col = (float)max_col;
+        center_col = (float)max_col + 1.0f;
 #endif
     }
 
