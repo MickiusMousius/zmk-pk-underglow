@@ -46,6 +46,38 @@ The `pk_underglow` module supports both standard ZMK underglow animations and he
 
 ---
 
+## Creating Custom Effects
+This module was designed to make it incredibly simple to add your own custom underglow effects in C. All effects are decoupled from the hardware state management.
+
+To add a new effect:
+1. Create a new `.c` file in the `src/effects/` directory (e.g., `my_effect.c`).
+2. Write your render function which modifies the `pixels` array directly.
+3. Open `src/effects_register.c` and add a new entry to the `pk_underglow_effects` array:
+
+```c
+const struct pk_underglow_effect_ops pk_underglow_effects[] = {
+    // ... existing effects ...
+    {
+        .name = "MyEffect",
+        .render = zmk_pk_underglow_effect_my_effect,
+        // Optional functions:
+        // .select = zmk_pk_underglow_effect_my_effect_init,
+        // .pos_changed = zmk_pk_underglow_effect_my_effect_trigger
+    },
+};
+```
+
+Each effect requires:
+- `.name`: A human-readable name (10 characters or less).
+- `.render`: The function that runs every frame (67ms) to update the LEDs.
+
+Optional functions:
+- `.select`: Called once when the user cycles to this effect. Great for initializing state or resetting variables.
+- `.pos_changed`: Called whenever a key is pressed. Perfect for reactive effects like ripple or twinkle.
+- `.is_layer_indicator`: Set to `true` if this effect renders a layer map instead of a global animation.
+
+---
+
 # Installation
 
 To use this module, you need to add it to your ZMK user config repository.

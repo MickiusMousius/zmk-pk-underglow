@@ -1,7 +1,7 @@
 zephyr_library()
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/pk_underglow.c)
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/pk_underglow_queue.c)
-
+zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/effects_register.c)
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/pk_split_sync.c)
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/behaviors/behavior_pk_underglow.c)
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/behaviors/behavior_pk_underglow_color.c)

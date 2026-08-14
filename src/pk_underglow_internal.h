@@ -16,13 +16,17 @@
 void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup);
 int zmk_pk_underglow_transient_off(void);
 struct zmk_behavior_binding;
-int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings, size_t rgbmap_len, uint8_t layer);
+int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings,
+                                  size_t rgbmap_len, uint8_t layer);
 
 #if CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION != -1
 #define WHITE_SATURATION CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION
-#elif DT_HAS_COMPAT_STATUS_OKAY(zmk_pk_underglow_layer) &&                                                             \
-    DT_NODE_HAS_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), white_saturation)
-#define WHITE_SATURATION DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), white_saturation)
+#elif DT_HAS_COMPAT_STATUS_OKAY(zmk_pk_underglow_layer) &&                     \
+    DT_NODE_HAS_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer),    \
+                     white_saturation)
+#define WHITE_SATURATION                                                       \
+  DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer),               \
+          white_saturation)
 #else
 #define WHITE_SATURATION 0
 #endif
@@ -31,28 +35,30 @@ int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings, s
 #define CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS 5
 #endif
 
-enum pk_underglow_effect {
-    UNDERGLOW_EFFECT_WHITE,
-    UNDERGLOW_EFFECT_SOLID,
-    UNDERGLOW_EFFECT_BREATHE,
-    UNDERGLOW_EFFECT_SPECTRUM,
-    UNDERGLOW_EFFECT_SWIRL,
-    UNDERGLOW_EFFECT_PINWHEEL,
-    UNDERGLOW_EFFECT_RIPPLE,
-    UNDERGLOW_EFFECT_RAINBOW_RIPPLE,
-    UNDERGLOW_EFFECT_TWINKLE,
-    UNDERGLOW_EFFECT_RAINBOW_TWINKLE,
-    UNDERGLOW_EFFECT_LAYER_INDICATORS,
-    UNDERGLOW_EFFECT_NUMBER // Used to track number of underglow effects
+#define MAX_UNDERGLOW_EFFECTS 32
+
+typedef void (*pk_underglow_render_t)(void);
+typedef void (*pk_underglow_select_t)(void);
+typedef void (*pk_underglow_pos_changed_t)(uint8_t row, uint8_t col);
+
+struct pk_underglow_effect_ops {
+  const char *name;
+  pk_underglow_render_t render;
+  pk_underglow_select_t select;
+  pk_underglow_pos_changed_t pos_changed;
+  bool is_layer_indicator;
 };
 
+extern const struct pk_underglow_effect_ops pk_underglow_effects[];
+extern const int pk_underglow_effects_count;
+
 struct pk_underglow_state {
-    struct zmk_led_hsb colors[ZMK_ENDPOINT_COUNT];
-    uint8_t current_effects[ZMK_ENDPOINT_COUNT];
-    uint8_t effect_speeds[UNDERGLOW_EFFECT_NUMBER];
-    uint16_t animation_step;
-    bool on;
-    bool layer_enabled;
+  struct zmk_led_hsb colors[ZMK_ENDPOINT_COUNT];
+  uint8_t current_effects[ZMK_ENDPOINT_COUNT];
+  uint8_t effect_speeds[MAX_UNDERGLOW_EFFECTS];
+  uint16_t animation_step;
+  bool on;
+  bool layer_enabled;
 };
 
 // Global State
@@ -78,6 +84,7 @@ void zmk_pk_underglow_effect_spectrum(void);
 void zmk_pk_underglow_effect_swirl(void);
 
 void zmk_pk_underglow_effect_ripple_trigger(uint8_t row, uint8_t col);
+void zmk_pk_underglow_effect_rainbow_ripple_trigger(uint8_t row, uint8_t col);
 void zmk_pk_underglow_effect_twinkle_reset(void);
 void zmk_pk_underglow_effect_ripple(void);
 void zmk_pk_underglow_effect_rainbow_ripple(void);
@@ -85,3 +92,8 @@ void zmk_pk_underglow_effect_twinkle(void);
 void zmk_pk_underglow_effect_rainbow_twinkle(void);
 void zmk_pk_underglow_effect_pinwheel(void);
 void zmk_pk_underglow_effect_layer(void);
+
+// Effect specific select wrappers
+void zmk_pk_underglow_effect_rainbow_ripple_select(void);
+void zmk_pk_underglow_effect_twinkle_select(void);
+void zmk_pk_underglow_effect_rainbow_twinkle_select(void);
