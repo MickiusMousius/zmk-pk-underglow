@@ -932,8 +932,11 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
   } else if (state_directive == 2) {
     zmk_pk_underglow_transient_off();
   } else {
-    // Normal sync: Ensure timer runs if the central is on or layer effect is active
-    if (state.on || state.layer_enabled) {
+    // Normal sync
+    if (state.layer_enabled) {
+      // Do nothing regarding power. The call to zmk_pk_underglow_set_peripheral_layer()
+      // above has already definitively turned the LEDs ON or OFF based on the layer map.
+    } else if (state.on) {
       if (!is_powered || effect_changed) {
         zmk_pk_underglow_transient_on();
       }
