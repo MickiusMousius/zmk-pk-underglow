@@ -154,7 +154,7 @@ static void zmk_pk_underglow_tick_handler(struct k_timer *timer) {
 
 K_TIMER_DEFINE(underglow_tick, zmk_pk_underglow_tick_handler, NULL);
 
-#if IS_ENABLED(CONFIG_SETTINGS)
+#if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
 static int rgb_settings_set(const char *name, size_t len, settings_read_cb read_cb, void *cb_arg) {
     const char *next;
     int rc;
@@ -190,6 +190,8 @@ static void zmk_pk_underglow_save_state_work(struct k_work *_work) { pk_ug_queue
 void pk_ug_task_save_settings_execute(void) { settings_save_one("rgb/underglow/state", &state, sizeof(state)); }
 
 static struct k_work_delayable underglow_save_work;
+#else
+void pk_ug_task_save_settings_execute(void) {}
 #endif
 
 static int zmk_pk_underglow_init(void) {
@@ -246,7 +248,11 @@ static int zmk_pk_underglow_init(void) {
         LOG_INF("Power GPIO configured successfully");
     }
 
+#if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    state = (struct pk_underglow_state){animation_step : 0, on : false};
+#else
     state = (struct pk_underglow_state){animation_step : 0, on : IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_ON_START)};
+#endif
 
     active_profile_index = get_active_profile();
 
@@ -263,7 +269,7 @@ static int zmk_pk_underglow_init(void) {
         state.effect_speeds[i] = CONFIG_ZMK_PK_UNDERGLOW_SPD_START;
     }
 
-#if IS_ENABLED(CONFIG_SETTINGS)
+#if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
     k_work_init_delayable(&underglow_save_work, zmk_pk_underglow_save_state_work);
 #endif
 
@@ -281,7 +287,7 @@ static int zmk_pk_underglow_init(void) {
 }
 
 int zmk_pk_underglow_save_state(void) {
-#if IS_ENABLED(CONFIG_SETTINGS)
+#if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
     int ret = k_work_reschedule(&underglow_save_work, K_MSEC(CONFIG_ZMK_SETTINGS_SAVE_DEBOUNCE));
     return MIN(ret, 0);
 #else
@@ -684,11 +690,15 @@ static int pk_underglow_auto_state(bool target_wake_state) {
             zmk_pk_underglow_set_layer(pk_underglow_top_layer(), true);
             return 0;
         }
+#if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+        return 0;
+#else
         if (sleep_state.rgb_state_before_sleeping) {
             return zmk_pk_underglow_transient_on();
         } else {
             return zmk_pk_underglow_transient_off();
         }
+#endif
     } else {
         sleep_state.rgb_state_before_sleeping = state.on;
         return zmk_pk_underglow_transient_off();
