@@ -330,6 +330,7 @@ int zmk_pk_underglow_get_state(bool *on_off) {
 
 int zmk_pk_underglow_on(void) {
     zmk_pk_underglow_transient_on();
+    state.on = true;
     if (pk_underglow_effects[state.current_effects[active_profile_index]].is_layer_indicator) {
         state.layer_enabled = true;
     }
