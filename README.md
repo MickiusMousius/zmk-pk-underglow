@@ -11,7 +11,7 @@ Standard keyboard backlighting applies a single global color or effect across th
 - **Layer-Based Lighting:** Define unique lighting layouts for different keymap layers. Lighting automatically updates when layers become active.
 - **Dynamic Connection Indicators:** Use specific behaviors to show Bluetooth and USB connection status directly on your keys (e.g., pulsing when active, solid when connected, off when disconnected).
 - **Per-Profile State Tracking:** The module automatically stores and restores your current underglow color, active effect, and animation speed for each individual output profile (USB and Bluetooth 0-4). You can configure a unique aesthetic for each connected device, and the lighting will seamlessly update when you switch profiles.
-- **Per-Effect Animation Speeds:** Each global effect tracks its own independent animation speed. You can configure a slow, relaxing Breathe effect alongside a fast, responsive Ripple effect without constantly adjusting a global speed setting.
+- **Per-Effect Animation Speeds:** Each global effect tracks its own independent animation speed. You can configure a slow, relaxing Breathe Hue effect alongside a fast, responsive Ripple effect without constantly adjusting a global speed setting.
 
 - **Split Keyboard Synchronization:** Colors and effects are seamlessly synchronized between central and peripheral halves of split keyboards.
 
@@ -68,7 +68,7 @@ const struct pk_underglow_effect_ops pk_underglow_effects[] = {
 ```
 
 Each effect requires:
-- `.name`: A human-readable name (10 characters or less).
+- `.name`: A human-readable name (15 characters or less).
 - `.render`: The function that runs every frame (67ms) to update the LEDs.
 
 Optional functions:
@@ -253,7 +253,7 @@ Sets the key to a static, solid color regardless of global effects.
 ### `&eff_hue OFFSET` (Moving Hue Offset)
 Retrieves the *current global hue* of your keyboard and adds the `OFFSET` parameter (in degrees, 0-359).
 - **How it works with global effects:** If your keyboard is running an animated global effect (like Spectrum or Swirl), the global hue is constantly changing. Using `&eff_hue` on your keys with different offsets (e.g. `&eff_hue 0`, `&eff_hue 15`, `&eff_hue 30`) will create a cascading wave or rolling rainbow effect across those specific keys.
-- **How it works statically:** If your keyboard is running a solid global effect, `&eff_hue` will simply display a static color shifted by your offset from the base global color.
+- **How it works statically:** If your keyboard is running a Solid Hue global effect, `&eff_hue` will simply display a static color shifted by your offset from the base global color.
 
 ### `&eff_bt PROFILE_INDEX` (Bluetooth Indicator)
 Dynamically indicates the status of a specific Bluetooth profile (0-4). This is extremely useful for a Settings or Bluetooth layer.

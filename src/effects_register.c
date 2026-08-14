@@ -8,7 +8,7 @@
  * array below.
  *
  * Each effect requires:
- *  - .name: A human-readable name (10 characters or less).
+ *  - .name: A human-readable name (15 characters or less).
  *  - .render: The function that renders the effect.
  *
  * Optional functions:
@@ -48,21 +48,21 @@ void zmk_pk_underglow_effect_rainbow_twinkle_select(void);
 
 const struct pk_underglow_effect_ops pk_underglow_effects[] = {
     {.name = "White", .render = zmk_pk_underglow_effect_white},
-    {.name = "Solid", .render = zmk_pk_underglow_effect_solid},
-    {.name = "Breathe", .render = zmk_pk_underglow_effect_breathe},
+    {.name = "Solid Hue", .render = zmk_pk_underglow_effect_solid},
+    {.name = "Breathe Hue", .render = zmk_pk_underglow_effect_breathe},
     {.name = "Spectrum", .render = zmk_pk_underglow_effect_spectrum},
     {.name = "Swirl", .render = zmk_pk_underglow_effect_swirl},
     {.name = "Pinwheel", .render = zmk_pk_underglow_effect_pinwheel},
     {.name = "Ripple", .render = zmk_pk_underglow_effect_ripple, .pos_changed = zmk_pk_underglow_effect_ripple_trigger},
-    {.name = "RbRipple",
+    {.name = "Ripple Disco",
      .render = zmk_pk_underglow_effect_rainbow_ripple,
      .pos_changed = zmk_pk_underglow_effect_rainbow_ripple_trigger,
      .select = zmk_pk_underglow_effect_rainbow_ripple_select},
     {.name = "Twinkle", .render = zmk_pk_underglow_effect_twinkle, .select = zmk_pk_underglow_effect_twinkle_select},
-    {.name = "RbTwinkle",
+    {.name = "Twinkle Disco",
      .render = zmk_pk_underglow_effect_rainbow_twinkle,
      .select = zmk_pk_underglow_effect_rainbow_twinkle_select},
-    {.name = "Layer", .render = zmk_pk_underglow_effect_layer, .is_layer_indicator = true},
+    {.name = "Layer Indicator", .render = zmk_pk_underglow_effect_layer, .is_layer_indicator = true},
 };
 
 

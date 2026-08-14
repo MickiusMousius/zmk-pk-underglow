@@ -939,6 +939,17 @@ SYS_INIT(zmk_pk_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 
 struct zmk_led_hsb zmk_pk_underglow_get_color(void) { return state.colors[active_profile_index]; }
 
+const char *zmk_pk_underglow_get_effect_name(void) {
+    return pk_underglow_effects[state.current_effects[active_profile_index]].name;
+}
+
+
+uint8_t zmk_pk_underglow_get_speed(void) { return state.effect_speeds[state.current_effects[active_profile_index]]; }
+
+
+bool zmk_pk_underglow_is_on(void) { return state.on; }
+
+
 int zmk_pk_underglow_hsb_to_hex(struct zmk_led_hsb hsb) {
     struct led_rgb rgb = hsb_to_rgb(hsb);
     return (rgb.r << 16) | (rgb.g << 8) | rgb.b;

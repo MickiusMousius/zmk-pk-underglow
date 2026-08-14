@@ -36,6 +36,9 @@ int zmk_pk_underglow_change_spd(int direction);
 int zmk_pk_underglow_set_hsb(struct zmk_led_hsb color);
 
 struct zmk_led_hsb zmk_pk_underglow_get_color(void);
+const char *zmk_pk_underglow_get_effect_name(void);
+uint8_t zmk_pk_underglow_get_speed(void);
+bool zmk_pk_underglow_is_on(void);
 
 int zmk_pk_underglow_hsb_to_hex(struct zmk_led_hsb hsb);
 

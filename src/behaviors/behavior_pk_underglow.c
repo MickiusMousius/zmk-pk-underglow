@@ -11,6 +11,7 @@
 #include <zephyr/logging/log.h>
 
 #include <dt-bindings/zmk/rgb.h>
+#include <zmk/events/pk_underglow_settings_changed.h>
 #include <zmk/keymap.h>
 #include <zmk/pk_underglow.h>
 
@@ -106,6 +107,8 @@ static const struct behavior_parameter_value_metadata hsv_p1_value_metadata_valu
 
 
 
+
+
 static const struct behavior_parameter_value_metadata hsv_p2_value_metadata_values[] = {
     {
         .display_name = "Color",
@@ -116,12 +119,16 @@ static const struct behavior_parameter_value_metadata hsv_p2_value_metadata_valu
 
 
 
+
+
 static const struct behavior_parameter_metadata_set hsv_value_metadata_set = {
     .param1_values = hsv_p1_value_metadata_values,
     .param1_values_len = ARRAY_SIZE(hsv_p1_value_metadata_values),
     .param_values = hsv_p2_value_metadata_values,
     .param_values_len = ARRAY_SIZE(hsv_p2_value_metadata_values),
 };
+
+
 
 
 
@@ -218,41 +225,63 @@ static int on_keymap_binding_convert_central_state_dependent_params(struct zmk_b
 
 
 static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding, struct zmk_behavior_binding_event event) {
+    int ret = 0;
     switch (binding->param1) {
     case RGB_TOG_CMD:
-        return zmk_pk_underglow_toggle();
+        ret = zmk_pk_underglow_toggle();
+        break;
     case RGB_ON_CMD:
-        return zmk_pk_underglow_on();
+        ret = zmk_pk_underglow_on();
+        break;
     case RGB_OFF_CMD:
-        return zmk_pk_underglow_off();
+        ret = zmk_pk_underglow_off();
+        break;
     case RGB_HUI_CMD:
-        return zmk_pk_underglow_change_hue(1);
+        ret = zmk_pk_underglow_change_hue(1);
+        break;
     case RGB_HUD_CMD:
-        return zmk_pk_underglow_change_hue(-1);
+        ret = zmk_pk_underglow_change_hue(-1);
+        break;
     case RGB_SAI_CMD:
-        return zmk_pk_underglow_change_sat(1);
+        ret = zmk_pk_underglow_change_sat(1);
+        break;
     case RGB_SAD_CMD:
-        return zmk_pk_underglow_change_sat(-1);
+        ret = zmk_pk_underglow_change_sat(-1);
+        break;
     case RGB_BRI_CMD:
-        return zmk_pk_underglow_change_brt(1);
+        ret = zmk_pk_underglow_change_brt(1);
+        break;
     case RGB_BRD_CMD:
-        return zmk_pk_underglow_change_brt(-1);
+        ret = zmk_pk_underglow_change_brt(-1);
+        break;
     case RGB_SPI_CMD:
-        return zmk_pk_underglow_change_spd(1);
+        ret = zmk_pk_underglow_change_spd(1);
+        break;
     case RGB_SPD_CMD:
-        return zmk_pk_underglow_change_spd(-1);
+        ret = zmk_pk_underglow_change_spd(-1);
+        break;
     case RGB_EFS_CMD:
-        return zmk_pk_underglow_select_effect(binding->param2);
+        ret = zmk_pk_underglow_select_effect(binding->param2);
+        break;
     case RGB_EFF_CMD:
-        return zmk_pk_underglow_cycle_effect(1);
+        ret = zmk_pk_underglow_cycle_effect(1);
+        break;
     case RGB_EFR_CMD:
-        return zmk_pk_underglow_cycle_effect(-1);
+        ret = zmk_pk_underglow_cycle_effect(-1);
+        break;
     case RGB_COLOR_HSB_CMD:
-        return zmk_pk_underglow_set_hsb((struct zmk_led_hsb){
+        ret = zmk_pk_underglow_set_hsb((struct zmk_led_hsb){
             .h = (binding->param2 >> 16) & 0xFFFF, .s = (binding->param2 >> 8) & 0xFF, .b = binding->param2 & 0xFF});
+        break;
+    default:
+        return -ENOTSUP;
     }
 
-    return -ENOTSUP;
+    if (ret >= 0) {
+        raise_pk_underglow_settings_changed((struct pk_underglow_settings_changed){.timestamp = k_uptime_get()});
+    }
+
+    return ret;
 }
 
 
