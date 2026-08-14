@@ -444,22 +444,7 @@ int zmk_pk_underglow_transient_off(void) {
   return 0;
 }
 
-// Effect Specific Initialization Wrappers
-void zmk_pk_underglow_effect_rainbow_ripple_select(void) {
-  global_rainbow_hue = state.colors[active_profile_index].h;
-  for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-    pixel_base_hues[i] = state.colors[active_profile_index].h;
-  }
-}
 
-void zmk_pk_underglow_effect_twinkle_select(void) {
-  zmk_pk_underglow_effect_twinkle_reset();
-}
-
-void zmk_pk_underglow_effect_rainbow_twinkle_select(void) {
-  zmk_pk_underglow_effect_rainbow_ripple_select();
-  zmk_pk_underglow_effect_twinkle_reset();
-}
 
 int zmk_pk_underglow_calc_effect(int direction) {
   return (state.current_effects[active_profile_index] +

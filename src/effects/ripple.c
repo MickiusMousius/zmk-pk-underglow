@@ -156,3 +156,10 @@ static void process_ripples(bool is_rainbow) {
 void zmk_pk_underglow_effect_ripple(void) { process_ripples(false); }
 
 void zmk_pk_underglow_effect_rainbow_ripple(void) { process_ripples(true); }
+
+void zmk_pk_underglow_effect_rainbow_ripple_select(void) {
+  global_rainbow_hue = state.colors[active_profile_index].h;
+  for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+    pixel_base_hues[i] = state.colors[active_profile_index].h;
+  }
+}

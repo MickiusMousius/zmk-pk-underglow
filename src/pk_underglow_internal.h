@@ -79,24 +79,6 @@ struct zmk_led_hsb hsb_scale_zero_max(struct zmk_led_hsb hsb);
 struct led_rgb hsb_to_rgb(struct zmk_led_hsb hsb);
 int rgb_pixel_lookup(int idx);
 
-// Effect functions
-void zmk_pk_underglow_effect_solid(void);
-void zmk_pk_underglow_effect_white(void);
-void zmk_pk_underglow_effect_breathe(void);
-void zmk_pk_underglow_effect_spectrum(void);
-void zmk_pk_underglow_effect_swirl(void);
-
+// Effect Specific API
 void zmk_pk_underglow_effect_ripple_trigger(uint8_t row, uint8_t col);
 void zmk_pk_underglow_effect_rainbow_ripple_trigger(uint8_t row, uint8_t col);
-void zmk_pk_underglow_effect_twinkle_reset(void);
-void zmk_pk_underglow_effect_ripple(void);
-void zmk_pk_underglow_effect_rainbow_ripple(void);
-void zmk_pk_underglow_effect_twinkle(void);
-void zmk_pk_underglow_effect_rainbow_twinkle(void);
-void zmk_pk_underglow_effect_pinwheel(void);
-void zmk_pk_underglow_effect_layer(void);
-
-// Effect specific select wrappers
-void zmk_pk_underglow_effect_rainbow_ripple_select(void);
-void zmk_pk_underglow_effect_twinkle_select(void);
-void zmk_pk_underglow_effect_rainbow_twinkle_select(void);

@@ -27,6 +27,25 @@
  * ==============================================================================
  */
 
+// Effect Prototypes
+void zmk_pk_underglow_effect_solid(void);
+void zmk_pk_underglow_effect_white(void);
+void zmk_pk_underglow_effect_breathe(void);
+void zmk_pk_underglow_effect_spectrum(void);
+void zmk_pk_underglow_effect_swirl(void);
+
+void zmk_pk_underglow_effect_ripple(void);
+void zmk_pk_underglow_effect_rainbow_ripple(void);
+void zmk_pk_underglow_effect_twinkle(void);
+void zmk_pk_underglow_effect_rainbow_twinkle(void);
+void zmk_pk_underglow_effect_pinwheel(void);
+void zmk_pk_underglow_effect_layer(void);
+
+void zmk_pk_underglow_effect_rainbow_ripple_select(void);
+void zmk_pk_underglow_effect_twinkle_select(void);
+void zmk_pk_underglow_effect_rainbow_twinkle_select(void);
+
+
 const struct pk_underglow_effect_ops pk_underglow_effects[] = {
     {.name = "White", .render = zmk_pk_underglow_effect_white},
     {.name = "Solid", .render = zmk_pk_underglow_effect_solid},
