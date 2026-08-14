@@ -29,6 +29,7 @@
 #include <zmk/event_manager.h>
 #include <zmk/events/activity_state_changed.h>
 #include <zmk/events/position_state_changed.h>
+#include <zmk/events/pk_underglow_power_changed.h>
 #include <zmk/events/underglow_color_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
 #include <zmk/hid_indicators.h>
@@ -396,6 +397,7 @@ void pk_ug_task_power_on_execute(void) {
 
     is_powered = true;
     power_on_uptime = k_uptime_get();
+    raise_pk_underglow_power_changed((struct pk_underglow_power_changed){.is_powered = true});
 }
 
 
@@ -427,6 +429,7 @@ void pk_ug_task_power_off_execute(void) {
         }
     }
     is_powered = false;
+    raise_pk_underglow_power_changed((struct pk_underglow_power_changed){.is_powered = false});
 }
 
 
@@ -988,7 +991,7 @@ const char *zmk_pk_underglow_get_effect_name(void) {
 uint8_t zmk_pk_underglow_get_speed(void) { return state.effect_speeds[state.current_effects[active_profile_index]]; }
 
 
-bool zmk_pk_underglow_is_on(void) { return state.on; }
+bool zmk_pk_underglow_is_on(void) { return is_powered; }
 
 
 int zmk_pk_underglow_hsb_to_hex(struct zmk_led_hsb hsb) {

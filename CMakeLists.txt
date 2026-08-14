@@ -12,6 +12,7 @@ zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/behaviors/behavior_pk_u
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/behaviors/behavior_pk_underglow_ug_pairing.c)
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/events/underglow_color_changed.c)
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/events/pk_underglow_settings_changed.c)
+zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/events/pk_underglow_power_changed.c)
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW src/utility.c)
 file(GLOB effect_srcs "src/effects/*.c")
 zephyr_library_sources_ifdef(CONFIG_ZMK_PK_UNDERGLOW ${effect_srcs})
