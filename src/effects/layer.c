@@ -148,15 +148,6 @@ const struct zmk_behavior_binding *pk_underglow_get_bindings(uint8_t layer) {
     }
 }
 
-uint8_t pk_underglow_top_layer_with_state(uint32_t state_to_test) {
-    for (int8_t layer = ZMK_KEYMAP_LAYERS_LEN - 1; layer > 0; layer--) {
-        if (state_to_test & BIT(layer)) {
-            return layer;
-        }
-    }
-    // return default layer (0)
-    return 0;
-}
 
 uint8_t pk_underglow_top_layer(void) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)

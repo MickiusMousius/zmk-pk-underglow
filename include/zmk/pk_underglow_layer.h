@@ -27,5 +27,5 @@ bool zmk_rgbmap_is_animated(uint8_t layer);
 
 const struct zmk_behavior_binding *pk_underglow_get_bindings(uint8_t layer);
 
-uint8_t pk_underglow_top_layer_with_state(uint32_t state_to_test);
+
 uint8_t pk_underglow_top_layer(void);

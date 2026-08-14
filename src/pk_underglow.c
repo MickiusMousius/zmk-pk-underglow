@@ -36,7 +36,6 @@
 #include <zmk/usb.h>
 
 #include <zmk/events/layer_state_changed.h>
-#include <zmk/pk_split_sync.h>
 #include <zmk/pk_underglow_queue.h>
 #include <zmk/workqueue.h>
 
@@ -63,6 +62,10 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #endif
 
 #include "pk_underglow_internal.h"
+
+/* ==========================================================================
+ * 1. INTERNAL STATE & VARIABLES
+ * ========================================================================== */
 
 uint16_t global_rainbow_hue = 0;
 uint16_t pixel_base_hues[STRIP_NUM_PIXELS];
@@ -102,6 +105,10 @@ static const struct gpio_dt_spec power_gpio = GPIO_DT_SPEC_GET_OR(
 #else
 static const struct gpio_dt_spec power_gpio = {0};
 #endif
+
+/* ==========================================================================
+ * 2. BACKGROUND WORK QUEUE HANDLERS
+ * ========================================================================== */
 
 void pk_ug_task_render_frame_execute(void) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
@@ -195,6 +202,10 @@ static struct k_work_delayable underglow_save_work;
 void pk_ug_task_save_settings_execute(void) {}
 #endif
 
+/* ==========================================================================
+ * 3. SYSTEM INITIALIZATION
+ * ========================================================================== */
+
 static int zmk_pk_underglow_init(void) {
   pk_ug_queue_init();
 
@@ -203,8 +214,8 @@ static int zmk_pk_underglow_init(void) {
 
   for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
     uint8_t midx = rgb_pixel_lookup(i);
-    int r = midx / 12;
-    int c = midx % 12;
+    int r = midx / PK_UG_MATRIX_COLS;
+    int c = midx % PK_UG_MATRIX_COLS;
     if (r < min_row)
       min_row = r;
     if (r > max_row)
@@ -298,6 +309,10 @@ static int zmk_pk_underglow_init(void) {
   }
   return 0;
 }
+
+/* ==========================================================================
+ * 4. PUBLIC API & STATE MUTATORS
+ * ========================================================================== */
 
 int zmk_pk_underglow_save_state(void) {
 #if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) ||           \
@@ -567,40 +582,19 @@ struct zmk_led_hsb zmk_pk_underglow_calc_brt(int direction) {
 int zmk_pk_underglow_change_hue(int direction) {
   if (!led_strip)
     return -ENODEV;
-
-  state.colors[active_profile_index] = zmk_pk_underglow_calc_hue(direction);
-
-  if (state.layer_enabled) {
-    zmk_pk_underglow_set_layer(pk_underglow_top_layer(), false);
-  }
-
-  return zmk_pk_underglow_save_state();
+  return zmk_pk_underglow_set_hsb(zmk_pk_underglow_calc_hue(direction));
 }
 
 int zmk_pk_underglow_change_sat(int direction) {
   if (!led_strip)
     return -ENODEV;
-
-  state.colors[active_profile_index] = zmk_pk_underglow_calc_sat(direction);
-
-  if (state.layer_enabled) {
-    zmk_pk_underglow_set_layer(pk_underglow_top_layer(), false);
-  }
-
-  return zmk_pk_underglow_save_state();
+  return zmk_pk_underglow_set_hsb(zmk_pk_underglow_calc_sat(direction));
 }
 
 int zmk_pk_underglow_change_brt(int direction) {
   if (!led_strip)
     return -ENODEV;
-
-  state.colors[active_profile_index] = zmk_pk_underglow_calc_brt(direction);
-
-  if (state.layer_enabled) {
-    zmk_pk_underglow_set_layer(pk_underglow_top_layer(), false);
-  }
-
-  return zmk_pk_underglow_save_state();
+  return zmk_pk_underglow_set_hsb(zmk_pk_underglow_calc_brt(direction));
 }
 
 int zmk_pk_underglow_change_spd(int direction) {
@@ -620,6 +614,10 @@ int zmk_pk_underglow_change_spd(int direction) {
 
   return zmk_pk_underglow_save_state();
 }
+
+/* ==========================================================================
+ * 5. EVENT LISTENERS & AUTO STATE
+ * ========================================================================== */
 
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE) ||                       \
     IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_USB)
@@ -819,8 +817,8 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
       const struct zmk_position_state_changed *ev =
           as_zmk_position_state_changed(eh);
       if (ev->state && ev->source == ZMK_POSITION_STATE_CHANGE_SOURCE_LOCAL) {
-        uint8_t row = ev->position / 12;
-        uint8_t col = ev->position % 12;
+        uint8_t row = ev->position / PK_UG_MATRIX_COLS;
+        uint8_t col = ev->position % PK_UG_MATRIX_COLS;
         pk_underglow_effects[state.current_effects[active_profile_index]]
             .pos_changed(row, col);
       }

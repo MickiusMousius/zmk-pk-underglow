@@ -35,6 +35,10 @@ int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings,
 #define CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS 5
 #endif
 
+#ifndef PK_UG_MATRIX_COLS
+#define PK_UG_MATRIX_COLS 12
+#endif
+
 #define MAX_UNDERGLOW_EFFECTS 32
 
 typedef void (*pk_underglow_render_t)(void);
