@@ -38,6 +38,11 @@ int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings,
 #define PK_UG_MATRIX_COLS DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), columns)
 #define PK_UG_MATRIX_ROWS DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), rows)
 
+#define PK_UG_POWER_STABILIZATION_MS DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), power_stabilization_ms, 20)
+#define PK_UG_SYNC_DELAY_MS DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), sync_delay_ms, 500)
+#define PK_UG_SYNC_RETRY_MS DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), sync_retry_ms, 1000)
+#define PK_UG_WAKE_SYNC_DELAY_MS DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), wake_sync_delay_ms, 100)
+
 #define MAX_UNDERGLOW_EFFECTS 32
 
 typedef void (*pk_underglow_render_t)(void);

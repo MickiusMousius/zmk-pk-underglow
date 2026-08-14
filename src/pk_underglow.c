@@ -46,7 +46,10 @@
 #include <zmk/split/central.h>
 #endif
 
-#define PK_UNDERGLOW_POWER_STABILIZATION_MS 20
+// Sleep states
+static struct {
+  bool is_awake;
+} sleep_state;
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 #include <zmk/events/split_peripheral_status_changed.h>
@@ -386,11 +389,10 @@ void pk_ug_task_power_on_execute(void) {
     }
   }
 
+  k_sleep(K_MSEC(PK_UG_POWER_STABILIZATION_MS));
+
   is_powered = true;
   power_on_uptime = k_uptime_get();
-  // Allow power to stabilize before returning, blocking any subsequent
-  // RENDER_FRAME tasks
-  k_sleep(K_MSEC(PK_UNDERGLOW_POWER_STABILIZATION_MS));
 }
 
 void pk_ug_task_power_off_execute(void) {
@@ -678,7 +680,7 @@ static void sync_peripheral_delayed_work_handler(struct k_work *work) {
   // the initial asynchronous messages due to slow GATT discovery.
   if (sync_retries < 3) {
     sync_retries++;
-    k_work_schedule(&sync_peripheral_delayed_work, K_MSEC(1000));
+    k_work_schedule(&sync_peripheral_delayed_work, K_MSEC(PK_UG_SYNC_RETRY_MS));
   }
 }
 
@@ -688,8 +690,8 @@ static void pk_underglow_bt_connected(struct bt_conn *conn, uint8_t err) {
   }
 
   sync_retries = 0;
-  // Send the first sync at 500ms, and retry 3 more times at 1s intervals
-  k_work_schedule(&sync_peripheral_delayed_work, K_MSEC(500));
+  // Send the first sync, and retry 3 more times if needed
+  k_work_schedule(&sync_peripheral_delayed_work, K_MSEC(PK_UG_SYNC_DELAY_MS));
 }
 
 BT_CONN_CB_DEFINE(pk_underglow_bt_conn_cb) = {
@@ -714,7 +716,7 @@ static int pk_underglow_auto_state(bool target_wake_state) {
   // before receiving the final color state, ensuring the LEDs latch the data
   // correctly.
   if (target_wake_state) {
-    k_work_schedule(&sync_peripheral_delayed_work, K_MSEC(100));
+    k_work_schedule(&sync_peripheral_delayed_work, K_MSEC(PK_UG_WAKE_SYNC_DELAY_MS));
   }
 #endif
 

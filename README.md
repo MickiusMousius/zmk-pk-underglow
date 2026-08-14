@@ -142,6 +142,12 @@ Next, you must add the `pk_underglow` driver node to your device tree (e.g., in 
 
         // Optional: A GPIO pin to enable/disable power to the LEDs
         power-gpios = <&gpio0 28 GPIO_ACTIVE_HIGH>; 
+
+        // Optional: Hardware-specific timing overrides (in milliseconds)
+        // power-stabilization-ms = <20>;
+        // sync-delay-ms = <500>;
+        // sync-retry-ms = <1000>;
+        // wake-sync-delay-ms = <100>;
         
         // Required: Maps the index of your physical keys (top-left to bottom-right) 
         // to the physical index of the LED on the LED strip chain.
@@ -155,8 +161,24 @@ Next, you must add the `pk_underglow` driver node to your device tree (e.g., in 
     };
 };
 ```
+### 3. Hardware Timing Overrides (Advanced)
+These optional Devicetree properties represent physical hardware characteristics of your specific board and its MCU. They are tuned to safe defaults, but can be adjusted if your specific power circuit or Bluetooth connection needs more leeway.
 
-### 3. Enable in `Kconfig`
+- **`power-stabilization-ms`** (Default: `20`): The time the module waits after turning on the `power-gpios` pin before sending the first frame of LED data.
+  - *Why it matters*: Many LED strips have bypass capacitors or level shifters that take a fraction of a second to charge and stabilize after power is applied. If data is sent too quickly, the first LED might glitch out, flash white, or drop the data entirely.
+  - *When to adjust*: If your underglow randomly flashes a bright color for a split second right when waking from sleep before returning to normal, increase this value (e.g., to `50`).
+
+- **`sync-delay-ms`** (Default: `500`): The delay before the central keyboard sends the initial color/effect synchronization payload to a newly connected peripheral half.
+  - *Why it matters*: When a peripheral connects via Bluetooth, it takes a moment for the Zephyr GATT services to fully discover and subscribe to the endpoints. Sending the payload immediately upon connection will often result in the data being dropped into the void.
+  - *When to adjust*: If your peripheral half frequently wakes up but stays dark (or stays on the wrong effect) until you press a key or change a layer, increase this value to give the Bluetooth stack more time to prepare.
+
+- **`sync-retry-ms`** (Default: `1000`): The interval at which the central will retry sending the synchronization payload if the initial connection sync is missed.
+  - *Why it matters*: Ensures the peripheral doesn't get permanently desynchronized if the initial `sync-delay-ms` window was missed due to heavy Bluetooth interference.
+
+- **`wake-sync-delay-ms`** (Default: `100`): A targeted delay used specifically when the central wakes from a deep sleep state, forcing a fresh sync payload to be sent.
+  - *Why it matters*: Gives the peripheral's power circuit ample time to stabilize out of deep sleep before the central forces the final active color state down the wire, ensuring the peripheral LEDs latch the data correctly.
+
+### 4. Enable in `Kconfig`
 Enable the feature in your `board.conf` or `shield.conf` (or globally in your `zmk.conf`):
 ```ini
 CONFIG_ZMK_PK_UNDERGLOW=y
