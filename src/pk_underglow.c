@@ -46,10 +46,7 @@
 #include <zmk/split/central.h>
 #endif
 
-// Sleep states
-static struct {
-  bool is_awake;
-} sleep_state;
+
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 #include <zmk/events/split_peripheral_status_changed.h>
@@ -357,7 +354,6 @@ int zmk_pk_underglow_transient_on(void) {
   if (!led_strip)
     return -ENODEV;
 
-  state.on = true;
   state.animation_step = 0;
 
   pk_ug_queue_push(PK_UG_TASK_POWER_ON);
@@ -523,8 +519,7 @@ void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup) {
     // If power is turning on, this will safely execute AFTER the power stabilizes.
     pk_ug_queue_push(PK_UG_TASK_RENDER_FRAME);
   } else {
-    if (state.on)
-      zmk_pk_underglow_transient_off();
+    zmk_pk_underglow_transient_off();
   }
 }
 
@@ -937,8 +932,8 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
   } else if (state_directive == 2) {
     zmk_pk_underglow_transient_off();
   } else {
-    // Normal sync: Ensure timer runs if the central is on
-    if (state.on) {
+    // Normal sync: Ensure timer runs if the central is on or layer effect is active
+    if (state.on || state.layer_enabled) {
       if (!is_powered || effect_changed) {
         zmk_pk_underglow_transient_on();
       }
