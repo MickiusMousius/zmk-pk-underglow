@@ -124,9 +124,27 @@ void pk_ug_task_render_frame_execute(void) {
     }
 #endif
 
-    if (pk_underglow_effects[state.current_effects[active_profile_index]].render) {
-        pk_underglow_effects[state.current_effects[active_profile_index]].render();
+#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS)
+    extern bool fireworks_active;
+    extern uint32_t fireworks_start_time;
+    if (fireworks_active) {
+        if (k_uptime_get_32() - fireworks_start_time >= CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS_DURATION) {
+            fireworks_active = false;
+        } else {
+            zmk_pk_underglow_effect_fireworks();
+        }
     }
+
+    if (!fireworks_active) {
+#endif
+
+        if (pk_underglow_effects[state.current_effects[active_profile_index]].render) {
+            pk_underglow_effects[state.current_effects[active_profile_index]].render();
+        }
+
+#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS)
+    }
+#endif
 
     int err = led_strip_update_rgb(led_strip, pixels, STRIP_NUM_PIXELS);
     if (err < 0) {
@@ -934,7 +952,30 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
 
 
 #endif
+#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS)
+#include <zmk/events/ble_pairing_complete.h>
 
+bool fireworks_active = false;
+uint32_t fireworks_start_time = 0;
+
+static int pk_underglow_fireworks_listener(const zmk_event_t *eh) {
+    const struct ble_pairing_complete *ev = as_ble_pairing_complete(eh);
+    if (ev && ev->bonded) {
+        fireworks_active = true;
+        fireworks_start_time = k_uptime_get_32();
+
+        // Ensure underglow is on
+        if (!state.on) {
+            zmk_pk_underglow_on();
+        }
+    }
+    return ZMK_EV_EVENT_BUBBLE;
+}
+
+
+ZMK_LISTENER(pk_underglow_fireworks, pk_underglow_fireworks_listener);
+ZMK_SUBSCRIPTION(pk_underglow_fireworks, ble_pairing_complete);
+#endif
 SYS_INIT(zmk_pk_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 
 struct zmk_led_hsb zmk_pk_underglow_get_color(void) { return state.colors[active_profile_index]; }

@@ -197,6 +197,12 @@ CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS=5
 
 # (Optional) Override the underglow animation frame rate (FPS). Overrides the Devicetree `fps` property.
 CONFIG_ZMK_PK_UNDERGLOW_FPS=30
+
+# (Optional) Enable fireworks animation on successful BLE pairing (default: y)
+CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS=y
+
+# (Optional) Duration of the fireworks animation in milliseconds (default: 5000)
+CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS_DURATION=5000
 ```
 
 ---

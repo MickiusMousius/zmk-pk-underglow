@@ -95,3 +95,4 @@ int rgb_pixel_lookup(int idx);
 // Effect Specific API
 void zmk_pk_underglow_effect_ripple_trigger(uint8_t row, uint8_t col);
 void zmk_pk_underglow_effect_rainbow_ripple_trigger(uint8_t row, uint8_t col);
+void zmk_pk_underglow_effect_fireworks(void);
