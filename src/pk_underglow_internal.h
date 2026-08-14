@@ -16,17 +16,13 @@
 void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup);
 int zmk_pk_underglow_transient_off(void);
 struct zmk_behavior_binding;
-int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings,
-                                  size_t rgbmap_len, uint8_t layer);
+int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings, size_t rgbmap_len, uint8_t layer);
 
 #if CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION != -1
 #define WHITE_SATURATION CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION
-#elif DT_HAS_COMPAT_STATUS_OKAY(zmk_pk_underglow_layer) &&                     \
-    DT_NODE_HAS_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer),    \
-                     white_saturation)
-#define WHITE_SATURATION                                                       \
-  DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer),               \
-          white_saturation)
+#elif DT_HAS_COMPAT_STATUS_OKAY(zmk_pk_underglow_layer) &&                                                             \
+    DT_NODE_HAS_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), white_saturation)
+#define WHITE_SATURATION DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), white_saturation)
 #else
 #define WHITE_SATURATION 0
 #endif
@@ -38,10 +34,12 @@ int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings,
 #define PK_UG_MATRIX_COLS DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), columns)
 #define PK_UG_MATRIX_ROWS DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), rows)
 
-#define PK_UG_POWER_STABILIZATION_MS DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), power_stabilization_ms, 20)
+#define PK_UG_POWER_STABILIZATION_MS                                                                                   \
+    DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), power_stabilization_ms, 20)
 #define PK_UG_SYNC_DELAY_MS DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), sync_delay_ms, 500)
 #define PK_UG_SYNC_RETRY_MS DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), sync_retry_ms, 1000)
-#define PK_UG_WAKE_SYNC_DELAY_MS DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), wake_sync_delay_ms, 100)
+#define PK_UG_WAKE_SYNC_DELAY_MS                                                                                       \
+    DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), wake_sync_delay_ms, 100)
 
 #if defined(CONFIG_ZMK_PK_UNDERGLOW_FPS) && CONFIG_ZMK_PK_UNDERGLOW_FPS > 0
 #define PK_UG_FPS CONFIG_ZMK_PK_UNDERGLOW_FPS
@@ -58,24 +56,26 @@ typedef void (*pk_underglow_select_t)(void);
 typedef void (*pk_underglow_pos_changed_t)(uint8_t row, uint8_t col);
 
 struct pk_underglow_effect_ops {
-  const char *name;
-  pk_underglow_render_t render;
-  pk_underglow_select_t select;
-  pk_underglow_pos_changed_t pos_changed;
-  bool is_layer_indicator;
+    const char *name;
+    pk_underglow_render_t render;
+    pk_underglow_select_t select;
+    pk_underglow_pos_changed_t pos_changed;
+    bool is_layer_indicator;
 };
+
 
 extern const struct pk_underglow_effect_ops pk_underglow_effects[];
 extern const int pk_underglow_effects_count;
 
 struct pk_underglow_state {
-  struct zmk_led_hsb colors[ZMK_ENDPOINT_COUNT];
-  uint8_t current_effects[ZMK_ENDPOINT_COUNT];
-  uint8_t effect_speeds[MAX_UNDERGLOW_EFFECTS];
-  uint16_t animation_step;
-  bool on;
-  bool layer_enabled;
+    struct zmk_led_hsb colors[ZMK_ENDPOINT_COUNT];
+    uint8_t current_effects[ZMK_ENDPOINT_COUNT];
+    uint8_t effect_speeds[MAX_UNDERGLOW_EFFECTS];
+    uint16_t animation_step;
+    bool on;
+    bool layer_enabled;
 };
+
 
 // Global State
 extern struct pk_underglow_state state;

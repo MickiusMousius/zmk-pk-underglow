@@ -24,9 +24,11 @@ struct underglow_indicators_data {
     uint32_t layers;
 };
 
+
 struct underglow_indicators_config {
     int indicator;
 };
+
 
 static int underglow_indicators_init(const struct device *dev) { return 0; };
 
@@ -45,6 +47,7 @@ static int underglow_indicators_process(struct zmk_behavior_binding *binding, st
         return binding->param1;
 }
 
+
 static const struct behavior_driver_api underglow_indicators_driver_api = {
     .binding_pressed = underglow_indicators_process,
     .locality = BEHAVIOR_LOCALITY_GLOBAL,
@@ -52,6 +55,7 @@ static const struct behavior_driver_api underglow_indicators_driver_api = {
     .get_parameter_metadata = zmk_behavior_get_empty_param_metadata,
 #endif // IS_ENABLED(CONFIG_ZMK_BEHAVIOR_METADATA)
 };
+
 
 #if IS_ENABLED(CONFIG_ZMK_HID_INDICATORS)
 static int underglow_indicators_listener(const zmk_event_t *eh);
@@ -71,6 +75,8 @@ static int underglow_indicators_listener(const zmk_event_t *eh) {
 
     return ZMK_EV_EVENT_BUBBLE;
 }
+
+
 #endif // IS_ENABLED(CONFIG_ZMK_HID_INDICATORS)
 
 #define KP_INST(n)                                                                                                     \

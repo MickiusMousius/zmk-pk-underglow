@@ -34,6 +34,7 @@ static int underglow_eff_hue_process(struct zmk_behavior_binding *binding, struc
     return zmk_pk_underglow_hsb_to_hex(hsb);
 }
 
+
 // API Structure
 static const struct behavior_driver_api underglow_eff_hue_driver_api = {
     .binding_pressed = underglow_eff_hue_process,
@@ -43,6 +44,7 @@ static const struct behavior_driver_api underglow_eff_hue_driver_api = {
 #endif // IS_ENABLED(CONFIG_ZMK_BEHAVIOR_METADATA)
 
 };
+
 
 BEHAVIOR_DT_INST_DEFINE(0, underglow_eff_hue_init, NULL, NULL, NULL, POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
                         &underglow_eff_hue_driver_api);

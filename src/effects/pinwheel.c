@@ -6,8 +6,8 @@
  * The colors sweep around the center in a continuous circular motion, creating a dynamic, rotating "pinwheel" of light.
  */
 #include "../pk_underglow_internal.h"
-#include <stdlib.h>
 #include <math.h>
+#include <stdlib.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846f
@@ -18,10 +18,10 @@
 
 /**
  * Calculates the hue angle (0-360) for a given point relative to a center.
- * 
- * This lookup table maps the coordinate distance (dr, dc) to an angle. It is 
- * dynamically generated on the first run using the exact physical dimensions 
- * of the board (PK_UG_MATRIX_ROWS and PK_UG_MATRIX_COLS). The table spans the 
+ *
+ * This lookup table maps the coordinate distance (dr, dc) to an angle. It is
+ * dynamically generated on the first run using the exact physical dimensions
+ * of the board (PK_UG_MATRIX_ROWS and PK_UG_MATRIX_COLS). The table spans the
  * maximum possible positive and negative distances across the matrix.
  * This eliminates floating-point math during the hot rendering loop while
  * guaranteeing the table perfectly fits any keyboard layout.
@@ -34,13 +34,14 @@ static void generate_pinwheel_lut(void) {
         for (int dc = -PK_UG_MATRIX_COLS; dc < PK_UG_MATRIX_COLS; dc++) {
             int r_idx = dr + PK_UG_MATRIX_ROWS;
             int c_idx = dc + PK_UG_MATRIX_COLS;
-            
+
             float angle = atan2f((float)dr, (float)dc) + M_PI;
             pinwheel_angle_lut[r_idx][c_idx] = (uint16_t)(((angle) / (2.0f * M_PI)) * 360.0f) % 360;
         }
     }
     pinwheel_lut_initialized = true;
 }
+
 
 static inline uint16_t pk_get_pinwheel_angle(int dr, int dc) {
     if (!pinwheel_lut_initialized) {
@@ -49,19 +50,20 @@ static inline uint16_t pk_get_pinwheel_angle(int dr, int dc) {
 
     int idx_r = dr + PK_UG_MATRIX_ROWS;
     int idx_c = dc + PK_UG_MATRIX_COLS;
-    
+
     if (idx_r < 0)
         idx_r = 0;
     else if (idx_r >= PINWHEEL_ROW_SPREAD)
         idx_r = PINWHEEL_ROW_SPREAD - 1;
-        
+
     if (idx_c < 0)
         idx_c = 0;
     else if (idx_c >= PINWHEEL_COL_SPREAD)
         idx_c = PINWHEEL_COL_SPREAD - 1;
-        
+
     return pinwheel_angle_lut[idx_r][idx_c];
 }
+
 
 void zmk_pk_underglow_effect_pinwheel(void) {
     // Increment the animation step to make it spin!

@@ -27,9 +27,11 @@ static int underglow_sync_process(struct zmk_behavior_binding *binding, struct z
     return 0;
 }
 
+
 static int underglow_sync_released(struct zmk_behavior_binding *binding, struct zmk_behavior_binding_event event) {
     return 0;
 }
+
 
 // API Structure
 static const struct behavior_driver_api underglow_sync_driver_api = {
@@ -41,6 +43,7 @@ static const struct behavior_driver_api underglow_sync_driver_api = {
 #endif // IS_ENABLED(CONFIG_ZMK_BEHAVIOR_METADATA)
 
 };
+
 
 BEHAVIOR_DT_INST_DEFINE(0, underglow_sync_init, NULL, NULL, NULL, POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
                         &underglow_sync_driver_api);

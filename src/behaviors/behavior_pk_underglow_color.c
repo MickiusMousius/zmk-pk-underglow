@@ -22,6 +22,7 @@ static int underglow_color_process(struct zmk_behavior_binding *binding, struct 
     return binding->param1;
 }
 
+
 // API Structure
 static const struct behavior_driver_api underglow_color_driver_api = {
     .binding_pressed = underglow_color_process,
@@ -31,6 +32,7 @@ static const struct behavior_driver_api underglow_color_driver_api = {
 #endif // IS_ENABLED(CONFIG_ZMK_BEHAVIOR_METADATA)
 
 };
+
 
 BEHAVIOR_DT_INST_DEFINE(0, underglow_color_init, NULL, NULL, NULL, POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
                         &underglow_color_driver_api);

@@ -11,10 +11,12 @@ struct zmk_led_hsb hsb_scale_min_max(struct zmk_led_hsb hsb) {
     return hsb;
 }
 
+
 struct zmk_led_hsb hsb_scale_zero_max(struct zmk_led_hsb hsb) {
     hsb.b = hsb.b * CONFIG_ZMK_PK_UNDERGLOW_BRT_MAX / BRT_MAX;
     return hsb;
 }
+
 
 /**
  * Fast integer-math alternative to floating point HSV-to-RGB conversion.

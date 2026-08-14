@@ -56,6 +56,7 @@ void pk_ug_queue_push(pk_ug_task_type_t type) {
     k_mutex_unlock(&queue_mutex);
 }
 
+
 void pk_ug_queue_push_sync(uint8_t layer, uint8_t state_directive) {
     k_mutex_lock(&queue_mutex, K_FOREVER);
 
@@ -79,6 +80,7 @@ void pk_ug_queue_push_sync(uint8_t layer, uint8_t state_directive) {
 
     k_mutex_unlock(&queue_mutex);
 }
+
 
 static void ug_worker_thread(void *p1, void *p2, void *p3) {
     while (1) {
@@ -118,6 +120,7 @@ static void ug_worker_thread(void *p1, void *p2, void *p3) {
         }
     }
 }
+
 
 int pk_ug_queue_init(void) {
     k_thread_create(&ug_thread_data, ug_thread_stack, K_THREAD_STACK_SIZEOF(ug_thread_stack), ug_worker_thread, NULL,

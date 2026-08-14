@@ -88,10 +88,12 @@ static const struct behavior_parameter_value_metadata no_arg_values[] = {
     },
 };
 
+
 static const struct behavior_parameter_metadata_set no_args_set = {
     .param1_values = no_arg_values,
     .param1_values_len = ARRAY_SIZE(no_arg_values),
 };
+
 
 /*
 static const struct behavior_parameter_value_metadata hsv_p1_value_metadata_values[] = {
@@ -102,6 +104,8 @@ static const struct behavior_parameter_value_metadata hsv_p1_value_metadata_valu
     },
 };
 
+
+
 static const struct behavior_parameter_value_metadata hsv_p2_value_metadata_values[] = {
     {
         .display_name = "Color",
@@ -110,12 +114,16 @@ static const struct behavior_parameter_value_metadata hsv_p2_value_metadata_valu
     },
 };
 
+
+
 static const struct behavior_parameter_metadata_set hsv_value_metadata_set = {
     .param1_values = hsv_p1_value_metadata_values,
     .param1_values_len = ARRAY_SIZE(hsv_p1_value_metadata_values),
     .param_values = hsv_p2_value_metadata_values,
     .param_values_len = ARRAY_SIZE(hsv_p2_value_metadata_values),
 };
+
+
 
 */
 
@@ -124,10 +132,12 @@ static const struct behavior_parameter_metadata_set sets[] = {
     // hsv_value_metadata_set,
 };
 
+
 static const struct behavior_parameter_metadata metadata = {
     .sets_len = ARRAY_SIZE(sets),
     .sets = sets,
 };
+
 
 #endif // IS_ENABLED(CONFIG_ZMK_BEHAVIOR_METADATA)
 
@@ -206,6 +216,7 @@ static int on_keymap_binding_convert_central_state_dependent_params(struct zmk_b
     return 0;
 };
 
+
 static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding, struct zmk_behavior_binding_event event) {
     switch (binding->param1) {
     case RGB_TOG_CMD:
@@ -244,9 +255,11 @@ static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding, struc
     return -ENOTSUP;
 }
 
+
 static int on_keymap_binding_released(struct zmk_behavior_binding *binding, struct zmk_behavior_binding_event event) {
     return ZMK_BEHAVIOR_OPAQUE;
 }
+
 
 static const struct behavior_driver_api behavior_pk_underglow_driver_api = {
     .binding_convert_central_state_dependent_params = on_keymap_binding_convert_central_state_dependent_params,
@@ -257,6 +270,7 @@ static const struct behavior_driver_api behavior_pk_underglow_driver_api = {
     .parameter_metadata = &metadata,
 #endif
 };
+
 
 BEHAVIOR_DT_INST_DEFINE(0, NULL, NULL, NULL, NULL, POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
                         &behavior_pk_underglow_driver_api);

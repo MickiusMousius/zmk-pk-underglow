@@ -53,23 +53,17 @@ const struct pk_underglow_effect_ops pk_underglow_effects[] = {
     {.name = "Spectrum", .render = zmk_pk_underglow_effect_spectrum},
     {.name = "Swirl", .render = zmk_pk_underglow_effect_swirl},
     {.name = "Pinwheel", .render = zmk_pk_underglow_effect_pinwheel},
-    {.name = "Ripple",
-     .render = zmk_pk_underglow_effect_ripple,
-     .pos_changed = zmk_pk_underglow_effect_ripple_trigger},
+    {.name = "Ripple", .render = zmk_pk_underglow_effect_ripple, .pos_changed = zmk_pk_underglow_effect_ripple_trigger},
     {.name = "RbRipple",
      .render = zmk_pk_underglow_effect_rainbow_ripple,
      .pos_changed = zmk_pk_underglow_effect_rainbow_ripple_trigger,
      .select = zmk_pk_underglow_effect_rainbow_ripple_select},
-    {.name = "Twinkle",
-     .render = zmk_pk_underglow_effect_twinkle,
-     .select = zmk_pk_underglow_effect_twinkle_select},
+    {.name = "Twinkle", .render = zmk_pk_underglow_effect_twinkle, .select = zmk_pk_underglow_effect_twinkle_select},
     {.name = "RbTwinkle",
      .render = zmk_pk_underglow_effect_rainbow_twinkle,
      .select = zmk_pk_underglow_effect_rainbow_twinkle_select},
-    {.name = "Layer",
-     .render = zmk_pk_underglow_effect_layer,
-     .is_layer_indicator = true},
+    {.name = "Layer", .render = zmk_pk_underglow_effect_layer, .is_layer_indicator = true},
 };
 
-const int pk_underglow_effects_count =
-    sizeof(pk_underglow_effects) / sizeof(pk_underglow_effects[0]);
+
+const int pk_underglow_effects_count = sizeof(pk_underglow_effects) / sizeof(pk_underglow_effects[0]);

@@ -23,6 +23,7 @@ static struct led_rgb hex_to_rgb(uint8_t r, uint8_t g, uint8_t b) {
     return (struct led_rgb){.r = (hsb.b * r) / 0xff, .g = (hsb.b * g) / 0xff, .b = (hsb.b * b) / 0xff};
 }
 
+
 int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings, size_t rgbmap_len, uint8_t layer) {
     int rc = 0;
     uint64_t uptime = k_uptime_get();
@@ -57,6 +58,7 @@ int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings, s
     return rc;
 }
 
+
 void zmk_pk_underglow_effect_layer(void) {
     uint8_t top_layer = pk_underglow_top_layer();
     if (zmk_rgbmap_is_animated(top_layer)) {
@@ -88,6 +90,8 @@ void zmk_pk_underglow_effect_layer(void) {
         zmk_pk_underglow_transient_off();
     }
 }
+
+
 #if !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 uint8_t pk_underglow_peripheral_synced_layer = 0;
 #endif
@@ -135,6 +139,7 @@ int zmk_rgbmap_id(uint8_t layer) {
     return -1;
 }
 
+
 int zmk_rgbmap_fade_delay(uint8_t layer) { return zmk_rgbmap_fds[zmk_rgbmap_id(layer)]; }
 
 bool zmk_rgbmap_is_animated(uint8_t layer) { return zmk_rgbmap_anis[zmk_rgbmap_id(layer)]; }
@@ -156,4 +161,6 @@ uint8_t pk_underglow_top_layer(void) {
     return pk_underglow_peripheral_synced_layer;
 #endif
 }
+
+
 #endif /* DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT) */

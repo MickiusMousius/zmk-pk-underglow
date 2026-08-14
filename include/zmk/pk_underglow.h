@@ -12,6 +12,7 @@ struct zmk_led_hsb {
     uint8_t b;
 };
 
+
 #define HUE_MAX 360
 #define SAT_MAX 100
 #define BRT_MAX 100

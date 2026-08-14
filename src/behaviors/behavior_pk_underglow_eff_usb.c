@@ -50,6 +50,7 @@ static int underglow_eff_usb_process(struct zmk_behavior_binding *binding, struc
 #endif
 }
 
+
 static const struct behavior_driver_api underglow_eff_usb_driver_api = {
     .binding_pressed = underglow_eff_usb_process,
     .locality = BEHAVIOR_LOCALITY_GLOBAL,
@@ -57,6 +58,7 @@ static const struct behavior_driver_api underglow_eff_usb_driver_api = {
     .get_parameter_metadata = zmk_behavior_get_empty_param_metadata,
 #endif
 };
+
 
 BEHAVIOR_DT_INST_DEFINE(0, underglow_eff_usb_init, NULL, NULL, NULL, POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
                         &underglow_eff_usb_driver_api);

@@ -18,6 +18,7 @@ struct pk_twinkle {
     bool active;
 };
 
+
 #ifndef CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX
 #define CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX 5
 #endif
@@ -44,11 +45,13 @@ static inline uint8_t pk_get_twinkle_sin(uint8_t step) {
     return twinkle_sin_lut[step];
 }
 
+
 void zmk_pk_underglow_effect_twinkle_reset(void) {
     for (int i = 0; i < CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX; i++) {
         twinkles[i].active = false;
     }
 }
+
 
 static void process_twinkles(bool is_rainbow) {
     uint32_t now = k_uptime_get_32();
@@ -114,18 +117,17 @@ static void process_twinkles(bool is_rainbow) {
     }
 }
 
+
 void zmk_pk_underglow_effect_twinkle(void) { process_twinkles(false); }
 
 void zmk_pk_underglow_effect_rainbow_twinkle(void) { process_twinkles(true); }
 
-void zmk_pk_underglow_effect_twinkle_select(void) {
-  zmk_pk_underglow_effect_twinkle_reset();
-}
+void zmk_pk_underglow_effect_twinkle_select(void) { zmk_pk_underglow_effect_twinkle_reset(); }
 
 void zmk_pk_underglow_effect_rainbow_twinkle_select(void) {
-  global_rainbow_hue = state.colors[active_profile_index].h;
-  for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-    pixel_base_hues[i] = state.colors[active_profile_index].h;
-  }
-  zmk_pk_underglow_effect_twinkle_reset();
+    global_rainbow_hue = state.colors[active_profile_index].h;
+    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+        pixel_base_hues[i] = state.colors[active_profile_index].h;
+    }
+    zmk_pk_underglow_effect_twinkle_reset();
 }
