@@ -9,6 +9,7 @@
  */
 #include "../pk_underglow_internal.h"
 #include <stdlib.h>
+#include <math.h>
 #include <zephyr/kernel.h>
 
 struct pk_ripple {
@@ -25,41 +26,33 @@ static uint8_t ripple_idx = 0;
 
 /**
  * Calculates the Euclidean distance between two points on the key matrix.
- * Assumes a maximum matrix size of 22x7 keys.
- *
- * Generation Script:
- * ```python
- * import math
- * print("{")
- * for r in range(8):
- *     row = [round(math.sqrt(r**2 + c**2) * 100) for c in range(23)]
- *     print("    {" + ", ".join(map(str, row)) + "},")
- * print("}")
- * ```
+ * 
+ * This lookup table maps the coordinate distance (dr, dc) to a radial distance
+ * scaled by 100. It is dynamically generated on the first run using the exact
+ * physical dimensions of the board (PK_UG_MATRIX_ROWS and PK_UG_MATRIX_COLS).
+ * This eliminates floating-point math during the hot rendering loop while
+ * guaranteeing the table perfectly fits any keyboard layout.
  */
-static const uint16_t ripple_distance_lut[8][23] = {
-    {0,    100,  200,  300,  400,  500,  600,  700,  800,  900,  1000, 1100,
-     1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200},
-    {100,  141,  224,  316,  412,  510,  608,  707,  806,  906,  1005, 1105,
-     1204, 1304, 1404, 1503, 1603, 1703, 1803, 1903, 2002, 2102, 2202},
-    {200,  224,  283,  361,  447,  539,  632,  728,  825,  922,  1020, 1118,
-     1217, 1315, 1414, 1513, 1612, 1712, 1811, 1910, 2010, 2110, 2209},
-    {300,  316,  361,  424,  500,  583,  671,  762,  854,  949,  1044, 1140,
-     1237, 1334, 1432, 1530, 1628, 1726, 1825, 1924, 2022, 2121, 2220},
-    {400,  412,  447,  500,  566,  640,  721,  806,  894,  985,  1077, 1170,
-     1265, 1360, 1456, 1552, 1649, 1746, 1844, 1942, 2040, 2138, 2236},
-    {500,  510,  539,  583,  640,  707,  781,  860,  943,  1030, 1118, 1208,
-     1300, 1393, 1487, 1581, 1676, 1772, 1868, 1965, 2062, 2159, 2256},
-    {600,  608,  632,  671,  721,  781,  849,  922,  1000, 1082, 1166, 1253,
-     1342, 1432, 1523, 1616, 1709, 1803, 1897, 1992, 2088, 2184, 2280},
-    {700,  707,  728,  762,  806,  860,  922,  990,  1063, 1140, 1221, 1304,
-     1389, 1476, 1565, 1655, 1746, 1838, 1931, 2025, 2119, 2214, 2309},
-};
+static uint16_t ripple_distance_lut[PK_UG_MATRIX_ROWS * 2][PK_UG_MATRIX_COLS * 2];
+static bool ripple_lut_initialized = false;
+
+static void generate_ripple_lut(void) {
+  for (int r = 0; r < PK_UG_MATRIX_ROWS * 2; r++) {
+    for (int c = 0; c < PK_UG_MATRIX_COLS * 2; c++) {
+      ripple_distance_lut[r][c] = (uint16_t)(sqrtf((r * r) + (c * c)) * 100);
+    }
+  }
+  ripple_lut_initialized = true;
+}
 
 static inline uint16_t pk_get_ripple_distance(int dr, int dc) {
+  if (!ripple_lut_initialized) {
+    generate_ripple_lut();
+  }
+
   int abs_r = abs(dr);
   int abs_c = abs(dc);
-  if (abs_r > 7 || abs_c > 22)
+  if (abs_r >= PK_UG_MATRIX_ROWS * 2 || abs_c >= PK_UG_MATRIX_COLS * 2)
     return 9900;
   return ripple_distance_lut[abs_r][abs_c];
 }
@@ -97,8 +90,8 @@ static void process_ripples(bool is_rainbow) {
 
   for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
     uint8_t midx = rgb_pixel_lookup(i);
-    int p_row = midx / 12;
-    int p_col = midx % 12;
+    int p_row = midx / PK_UG_MATRIX_COLS;
+    int p_col = midx % PK_UG_MATRIX_COLS;
 
     uint8_t peak_b = base_hsb.b;
     uint16_t peak_hue = is_rainbow ? pixel_base_hues[i] : 0;
@@ -116,7 +109,7 @@ static void process_ripples(bool is_rainbow) {
            60) /
           100;
       uint32_t max_radius =
-          1200; // Max distance across one half of keyboard (12.0f * 100)
+          (PK_UG_MATRIX_COLS * 100); // Max distance across the keyboard
 
       if (current_radius > max_radius) {
         ripples[r].active = false;

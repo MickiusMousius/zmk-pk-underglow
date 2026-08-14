@@ -47,7 +47,7 @@ The `pk_underglow` module supports both standard ZMK underglow animations and he
 ---
 
 ## Creating Custom Effects
-This module was designed to make it incredibly simple to add your own custom underglow effects in C. All effects are decoupled from the hardware state management.
+This module was designed to make it simple to add your own custom underglow effects in C. All effects are decoupled from the hardware state management.
 
 To add a new effect:
 1. Create a new `.c` file in the `src/effects/` directory (e.g., `my_effect.c`).
@@ -131,10 +131,19 @@ Next, you must add the `pk_underglow` driver node to your device tree (e.g., in 
     pk_underglow: pk_underglow {
         compatible = "zmk,pk-underglow-layer";
         
+        // Required: The visual dimensions of the keyboard matrix
+        columns = <12>;
+        rows = <4>;
+        
+        // Optional: The origin coordinates for radial effects like Ripple or Pinwheel.
+        // If omitted, defaults to the Top-Left edge (for central) or Top-Right edge (for peripheral).
+        center-column = <6>;
+        center-row = <2>;
+
         // Optional: A GPIO pin to enable/disable power to the LEDs
         power-gpios = <&gpio0 28 GPIO_ACTIVE_HIGH>; 
         
-        // Maps the index of your physical keys (top-left to bottom-right) 
+        // Required: Maps the index of your physical keys (top-left to bottom-right) 
         // to the physical index of the LED on the LED strip chain.
         // Example: The 0th key is lit by the 5th LED in the strip chain.
         pixel-lookup = <

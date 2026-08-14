@@ -7,6 +7,22 @@ properties:
   pixel-lookup:
     type: array
     required: true
+  columns:
+    type: int
+    required: true
+    description: "The number of visual columns across the keyboard matrix."
+  rows:
+    type: int
+    required: true
+    description: "The number of visual rows across the keyboard matrix."
+  center-column:
+    type: int
+    required: false
+    description: "The visual column index to use as the center origin for radial effects like ripple and pinwheel. Defaults to the physical edge of the board."
+  center-row:
+    type: int
+    required: false
+    description: "The visual row index to use as the center origin for radial effects like ripple and pinwheel. Defaults to the physical edge of the board."
   power-gpios:
     type: phandle-array
     required: false

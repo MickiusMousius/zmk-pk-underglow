@@ -227,14 +227,22 @@ static int zmk_pk_underglow_init(void) {
   }
 
   if (STRIP_NUM_PIXELS > 0) {
-#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
-    // Central side (or unibody): Top Left
-    center_row = min_row;
+#if DT_HAS_COMPAT_STATUS_OKAY(zmk_pk_underglow_layer) && \
+    DT_NODE_HAS_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), center_column)
+    center_col = DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), center_column);
+#elif IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
+    // Central side (or unibody): Top Left fallback
     center_col = min_col;
 #else
-    // Peripheral side: Top Right
-    center_row = min_row;
+    // Peripheral side: Top Right fallback
     center_col = max_col + 1;
+#endif
+
+#if DT_HAS_COMPAT_STATUS_OKAY(zmk_pk_underglow_layer) && \
+    DT_NODE_HAS_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), center_row)
+    center_row = DT_PROP(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), center_row);
+#else
+    center_row = min_row;
 #endif
   }
 
