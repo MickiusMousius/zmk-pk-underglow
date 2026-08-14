@@ -51,6 +51,11 @@ properties:
     required: false
     default: 100
     description: "Delay in ms before syncing the peripheral after the central wakes up."
+  fps:
+    type: int
+    required: false
+    default: 20
+    description: "The frame rate (frames per second) of the underglow animations. Can be overridden by CONFIG_ZMK_PK_UNDERGLOW_FPS if set."
 child-binding:
   description: "A layer to be used in a rgbmap"
 

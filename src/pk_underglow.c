@@ -357,7 +357,7 @@ int zmk_pk_underglow_transient_on(void) {
   state.animation_step = 0;
 
   pk_ug_queue_push(PK_UG_TASK_POWER_ON);
-  k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(67));
+  k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
 
   return 0;
 }
@@ -510,9 +510,9 @@ void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup) {
     int fade_delay = zmk_rgbmap_fade_delay(layer);
     bool animated = zmk_rgbmap_is_animated(layer);
     if (fade_delay > 0) {
-      k_timer_start(&underglow_tick, K_SECONDS(fade_delay), K_MSEC(67));
+      k_timer_start(&underglow_tick, K_SECONDS(fade_delay), K_MSEC(PK_UG_FRAME_DURATION));
     } else if (animated || fade_delay == 0) {
-      k_timer_start(&underglow_tick, K_MSEC(67), K_MSEC(67));
+      k_timer_start(&underglow_tick, K_MSEC(PK_UG_FRAME_DURATION), K_MSEC(PK_UG_FRAME_DURATION));
     }
     
     // Enqueue a render frame to the background thread to write the pixels.

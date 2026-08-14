@@ -90,4 +90,13 @@ config ZMK_PK_UNDERGLOW_EFF_START
 	int "ZMK_PK_UNDERGLOW_EFF_START"
 	default 0
 
+config ZMK_PK_UNDERGLOW_FPS
+	int "Underglow animation frame rate (FPS)"
+	range 0 120
+	default 0
+	help
+	  Optional override for the underglow animation frame rate.
+	  If set to a valid positive value, this overrides the 'fps'
+	  property defined in the Devicetree node. Defaults to 0 (disabled).
+
 endmenu

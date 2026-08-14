@@ -149,6 +149,9 @@ Next, you must add the `pk_underglow` driver node to your device tree (e.g., in 
         // sync-retry-ms = <1000>;
         // wake-sync-delay-ms = <100>;
         
+        // Optional: Animation frame rate (defaults to 20 FPS if omitted)
+        // fps = <20>;
+        
         // Required: Maps the index of your physical keys (top-left to bottom-right) 
         // to the physical index of the LED on the LED strip chain.
         // Example: The 0th key is lit by the 5th LED in the strip chain.
@@ -191,6 +194,9 @@ CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX=5
 
 # (Optional) Set the ambient background brightness percentage (0-100) for reactive effects (Ripple, Twinkle)
 CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS=5
+
+# (Optional) Override the underglow animation frame rate (FPS). Overrides the Devicetree `fps` property.
+CONFIG_ZMK_PK_UNDERGLOW_FPS=30
 ```
 
 ---

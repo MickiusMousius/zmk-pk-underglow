@@ -43,6 +43,14 @@ int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings,
 #define PK_UG_SYNC_RETRY_MS DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), sync_retry_ms, 1000)
 #define PK_UG_WAKE_SYNC_DELAY_MS DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), wake_sync_delay_ms, 100)
 
+#if defined(CONFIG_ZMK_PK_UNDERGLOW_FPS) && CONFIG_ZMK_PK_UNDERGLOW_FPS > 0
+#define PK_UG_FPS CONFIG_ZMK_PK_UNDERGLOW_FPS
+#else
+#define PK_UG_FPS DT_PROP_OR(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_pk_underglow_layer), fps, 20)
+#endif
+
+#define PK_UG_FRAME_DURATION (1000 / PK_UG_FPS)
+
 #define MAX_UNDERGLOW_EFFECTS 32
 
 typedef void (*pk_underglow_render_t)(void);
