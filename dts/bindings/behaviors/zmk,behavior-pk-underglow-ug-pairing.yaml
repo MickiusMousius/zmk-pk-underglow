@@ -1,0 +1,5 @@
+description: "PK Underglow Pairing Mode Indicator"
+
+compatible: "zmk,behavior-pk-underglow-ug-pairing"
+
+include: two_param.yaml

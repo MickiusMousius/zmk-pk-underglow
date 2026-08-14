@@ -53,5 +53,11 @@
             #binding-cells = <0>;
             display-name = "Underglow Layer Sync";
         };
+
+        ug_pairing: ugpairing {
+            compatible = "zmk,behavior-pk-underglow-ug-pairing";
+            #binding-cells = <2>;
+            display-name = "Underglow Pairing Mode";
+        };
     };
 };
