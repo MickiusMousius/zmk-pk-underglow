@@ -631,4 +631,26 @@ static int pk_underglow_fireworks_listener(const zmk_event_t *eh) {
 ZMK_LISTENER(pk_underglow_fireworks, pk_underglow_fireworks_listener);
 ZMK_SUBSCRIPTION(pk_underglow_fireworks, ble_pairing_complete);
 #endif
+
+#if IS_ENABLED(CONFIG_PM_DEVICE)
+static int pk_underglow_pm_action(const struct device *dev, enum pm_device_action action) {
+    switch (action) {
+    case PM_DEVICE_ACTION_SUSPEND:
+        if (is_powered) {
+            pk_ug_task_power_off_execute();
+        }
+        break;
+    default:
+        return -ENOTSUP;
+    }
+    return 0;
+}
+
+static int pk_underglow_pm_init(const struct device *dev) { return 0; }
+
+PM_DEVICE_DEFINE(pk_underglow_pm, pk_underglow_pm_action);
+DEVICE_DEFINE(pk_underglow_pm, "pk_underglow_pm", pk_underglow_pm_init, PM_DEVICE_GET(pk_underglow_pm), NULL, NULL,
+              POST_KERNEL, CONFIG_APPLICATION_INIT_PRIORITY, NULL);
+#endif
+
 SYS_INIT(zmk_pk_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
