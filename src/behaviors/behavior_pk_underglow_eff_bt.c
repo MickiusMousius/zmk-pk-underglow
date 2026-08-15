@@ -9,7 +9,7 @@
 #include <drivers/behavior.h>
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
-#include <zmk/pk_underglow.h>
+#include <zmk/public_api.h>
 
 #if IS_ENABLED(CONFIG_ZMK_BLE)
 #include <zmk/ble.h>

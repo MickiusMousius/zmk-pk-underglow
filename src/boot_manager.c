@@ -1,5 +1,5 @@
 /**
- * @file pk_underglow_stabilization.c
+ * @file boot_manager.c
  * @brief Implementation of the ZMK boot stabilization tracker for pk_underglow.
  *
  * Determining if ZMK has "finished booting and stabilized" is non-trivial because ZMK 
@@ -10,7 +10,7 @@
  * 1. Uptime Fallback Timer: A delayed work queue item initialized during SYS_INIT. If 
  *    the timeout (CONFIG_ZMK_PK_UNDERGLOW_STABILIZATION_TIMEOUT) is reached, we 
  *    forcefully assume stabilization. This ensures we never deadlock if settings are disabled.
- * 2. Settings Load (Central): We hook into ZMK's settings subsystem commit callback in pk_underglow.c.
+ * 2. Settings Load (Central): We hook into ZMK's settings subsystem commit callback in state_manager.c.
  *    Zephyr guarantees this is called once after sweeping flash.
  * 3. Sync Packets (Peripheral): The peripheral doesn't load settings, it waits for the 
  *    central. It is considered stable once the central pushes its first visual state payload.
@@ -20,7 +20,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/init.h>
 #include <zephyr/settings/settings.h>
-#include <zmk/pk_underglow.h>
+#include <zmk/public_api.h>
 #include <zmk/boot_manager.h>
 
 LOG_MODULE_DECLARE(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);

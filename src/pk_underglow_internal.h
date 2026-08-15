@@ -14,7 +14,7 @@
 #include <zephyr/drivers/led_strip.h>
 #include <zmk/behavior.h>
 #include <zmk/endpoints.h>
-#include <zmk/pk_underglow.h>
+#include <zmk/public_api.h>
 
 #if !DT_HAS_CHOSEN(zmk_underglow)
 #error "A zmk,underglow chosen node must be declared"

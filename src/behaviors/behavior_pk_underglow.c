@@ -13,7 +13,7 @@
 #include <dt-bindings/zmk/rgb.h>
 #include <zmk/events/pk_underglow_settings_changed.h>
 #include <zmk/keymap.h>
-#include <zmk/pk_underglow.h>
+#include <zmk/public_api.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 

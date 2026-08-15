@@ -12,7 +12,7 @@
 #include <zephyr/logging/log.h>
 #include <zmk/event_manager.h>
 #include <zmk/events/hid_indicators_changed.h>
-#include <zmk/events/underglow_color_changed.h>
+#include <zmk/events/pk_underglow_color_changed.h>
 #include <zmk/hid_indicators.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
@@ -70,8 +70,8 @@ static struct underglow_indicators_data underglow_indicators_data = {.indicators
 static int underglow_indicators_listener(const zmk_event_t *eh) {
     const struct zmk_hid_indicators_changed *ev = as_zmk_hid_indicators_changed(eh);
     underglow_indicators_data.indicators = ev->indicators;
-    raise_zmk_underglow_color_changed(
-        (struct zmk_underglow_color_changed){.layers = underglow_indicators_data.layers, .wakeup = true});
+    raise_zmk_pk_underglow_color_changed(
+        (struct zmk_pk_underglow_color_changed){.layers = underglow_indicators_data.layers, .wakeup = true});
 
     return ZMK_EV_EVENT_BUBBLE;
 }

@@ -1,5 +1,5 @@
 /**
- * @file pk_underglow_api.c
+ * @file public_api.c
  * @brief Public API and state mutators for the ZMK pk_underglow module.
  *
  * This file is responsible for housing the high-level API routines that are
@@ -24,10 +24,10 @@
 
 #include <zmk/keymap.h>
 #include <zmk/matrix.h>
-#include <zmk/pk_underglow.h>
+#include <zmk/public_api.h>
 #include <zmk/boot_manager.h>
 #include <zmk/pk_underglow_layer.h>
-#include <zmk/pk_underglow_queue.h>
+#include <zmk/task_manager.h>
 
 #include "pk_underglow_internal.h"
 

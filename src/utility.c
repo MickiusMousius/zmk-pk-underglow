@@ -8,7 +8,7 @@
 
 #include "pk_underglow_internal.h"
 #include <zephyr/kernel.h>
-#include <zmk/pk_underglow.h>
+#include <zmk/public_api.h>
 
 int center_row = 0;
 int center_col = 0;

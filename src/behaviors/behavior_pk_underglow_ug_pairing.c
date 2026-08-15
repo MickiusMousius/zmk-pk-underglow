@@ -11,8 +11,8 @@
 #include <zephyr/logging/log.h>
 #include <zmk/event_manager.h>
 #include <zmk/events/ble_passkey_state_changed.h>
-#include <zmk/events/underglow_color_changed.h>
-#include <zmk/pk_underglow.h>
+#include <zmk/events/pk_underglow_color_changed.h>
+#include <zmk/public_api.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
@@ -25,7 +25,7 @@ static int underglow_ug_pairing_listener(const zmk_event_t *eh) {
     pairing_active = ev->active;
 
     // Force redraw of underglow to apply new state
-    raise_zmk_underglow_color_changed((struct zmk_underglow_color_changed){.layers = 0xFFFFFFFF, .wakeup = true});
+    raise_zmk_pk_underglow_color_changed((struct zmk_pk_underglow_color_changed){.layers = 0xFFFFFFFF, .wakeup = true});
 
     return ZMK_EV_EVENT_BUBBLE;
 }

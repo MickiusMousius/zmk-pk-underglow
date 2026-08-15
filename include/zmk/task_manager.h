@@ -1,7 +1,7 @@
 #pragma once
 
 #include <zephyr/kernel.h>
-#include <zmk/pk_underglow.h>
+#include <zmk/public_api.h>
 
 typedef enum {
     PK_UG_TASK_POWER_ON,
@@ -26,7 +26,7 @@ void pk_ug_queue_push_power(pk_ug_task_type_t type);
 void pk_ug_queue_push_sync(uint8_t layer);
 int pk_ug_queue_init(void);
 
-// Handlers implemented in pk_underglow.c
+// Handlers implemented in state_manager.c
 void pk_ug_task_power_on_execute(void);
 void pk_ug_task_power_off_execute(void);
 void pk_ug_task_render_frame_execute(void);

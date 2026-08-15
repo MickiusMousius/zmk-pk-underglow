@@ -1,5 +1,5 @@
 /**
- * @file pk_underglow_queue.c
+ * @file task_manager.c
  * @brief Background work queue for the ZMK pk_underglow module.
  *
  * This file is responsible for managing a dedicated background Zephyr thread
@@ -26,7 +26,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <zmk/pk_underglow_queue.h>
+#include <zmk/task_manager.h>
 
 LOG_MODULE_DECLARE(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);
 

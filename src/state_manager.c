@@ -5,7 +5,7 @@
  */
 
 /**
- * @file pk_underglow.c
+ * @file state_manager.c
  * @brief Core state management and event system for the ZMK pk_underglow module.
  *
  * This file is the beating heart of the underglow subsystem. It is responsible for:
@@ -46,7 +46,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/led_strip.h>
 
-#include <zmk/pk_underglow.h>
+#include <zmk/public_api.h>
 #include <zmk/pk_underglow_layer.h>
 #include <zmk/boot_manager.h>
 
@@ -56,14 +56,14 @@
 #include <zmk/events/activity_state_changed.h>
 #include <zmk/events/pk_underglow_power_changed.h>
 #include <zmk/events/position_state_changed.h>
-#include <zmk/events/underglow_color_changed.h>
+#include <zmk/events/pk_underglow_color_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
 #include <zmk/hid_indicators.h>
 #include <zmk/matrix.h>
 #include <zmk/usb.h>
 
 #include <zmk/events/layer_state_changed.h>
-#include <zmk/pk_underglow_queue.h>
+#include <zmk/task_manager.h>
 #include <zmk/workqueue.h>
 
 #include <zmk/endpoints.h>
@@ -534,8 +534,8 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
         return ZMK_EV_EVENT_BUBBLE;
     }
 #endif
-    if (as_zmk_underglow_color_changed(eh)) {
-        const struct zmk_underglow_color_changed *ev = as_zmk_underglow_color_changed(eh);
+    if (as_zmk_pk_underglow_color_changed(eh)) {
+        const struct zmk_pk_underglow_color_changed *ev = as_zmk_pk_underglow_color_changed(eh);
         uint8_t layer = pk_underglow_top_layer();
         LOG_DBG("refresh layers %d, current: %d, wakeup: %d", ev->layers, layer, ev->wakeup);
         if (ev->layers & BIT(layer)) {
@@ -602,7 +602,7 @@ ZMK_SUBSCRIPTION(pk_underglow, zmk_split_peripheral_status_changed);
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
 ZMK_SUBSCRIPTION(pk_underglow, zmk_layer_state_changed);
 #endif
-ZMK_SUBSCRIPTION(pk_underglow, zmk_underglow_color_changed);
+ZMK_SUBSCRIPTION(pk_underglow, zmk_pk_underglow_color_changed);
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
 static int zmk_pk_underglow_endpoint_changed(const zmk_event_t *eh) {
