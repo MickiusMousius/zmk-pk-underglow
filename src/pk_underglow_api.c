@@ -25,6 +25,7 @@
 #include <zmk/keymap.h>
 #include <zmk/matrix.h>
 #include <zmk/pk_underglow.h>
+#include <zmk/boot_manager.h>
 #include <zmk/pk_underglow_layer.h>
 #include <zmk/pk_underglow_queue.h>
 
@@ -63,6 +64,7 @@ int zmk_pk_underglow_on(void) {
     pk_underglow_check_active_profile();
 
     runtime_state.on = true;
+    zmk_pk_underglow_set_boot_power(true);
 
     // CRITICAL: We must push POWER_ON before calling zmk_pk_underglow_set_layer().
     // If set_layer() successfully applies a layer map, it will push RENDER_FRAME.
@@ -107,6 +109,7 @@ int zmk_pk_underglow_transient_on(void) {
 int zmk_pk_underglow_off(void) {
     runtime_state.on = false;
     runtime_state.layer_enabled = false;
+    zmk_pk_underglow_set_boot_power(false);
 
     pk_ug_queue_push_power(PK_UG_TASK_POWER_OFF);
     k_timer_stop(&underglow_tick);

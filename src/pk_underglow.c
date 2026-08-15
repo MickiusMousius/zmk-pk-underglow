@@ -48,6 +48,7 @@
 
 #include <zmk/pk_underglow.h>
 #include <zmk/pk_underglow_layer.h>
+#include <zmk/boot_manager.h>
 
 #include <zmk/activity.h>
 #include <zmk/behavior.h>
@@ -224,6 +225,10 @@ static int rgb_settings_set(const char *name, size_t len, settings_read_cb read_
     return -ENOENT;
 }
 
+static int rgb_settings_commit(void) {
+    zmk_pk_underglow_signal_central_nvs_loaded();
+    return 0;
+}
 
 SETTINGS_STATIC_HANDLER_DEFINE(pk_underglow, "rgb/underglow", NULL, rgb_settings_set, NULL, NULL);
 
@@ -617,6 +622,8 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
     uint8_t layer = (param2 >> 16) & 0xFF;
     runtime_state.on = (param2 >> 24) & 1;
     runtime_state.layer_enabled = (param2 >> 27) & 1;
+
+    zmk_pk_underglow_signal_peripheral_sync();
 
     LOG_DBG("Peripheral: Extracted ug_sync state. Effect=%d, Hue=%d, Layer=%d",
             state.current_effects[active_profile_index], state.colors[active_profile_index].h, layer);

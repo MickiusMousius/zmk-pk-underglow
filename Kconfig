@@ -115,4 +115,11 @@ config ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS_DURATION
 	help
 	  Duration of the fireworks animation in milliseconds.
 
+config ZMK_PK_UNDERGLOW_STABILIZATION_TIMEOUT
+	int "ZMK_PK_UNDERGLOW_STABILIZATION_TIMEOUT"
+	default 1500
+	help
+	  The fallback timeout in milliseconds used to determine if ZMK has 
+	  stabilized and finished booting. Used to prevent post-boot races.
+
 endmenu
