@@ -63,6 +63,15 @@ int zmk_pk_underglow_on(void) {
     pk_underglow_check_active_profile();
 
     runtime_state.on = true;
+    
+    // CRITICAL: We must push POWER_ON before calling zmk_pk_underglow_set_layer().
+    // If set_layer() successfully applies a layer map, it will push RENDER_FRAME.
+    // If we pushed POWER_ON *after* set_layer(), the background queue's deduplication 
+    // logic would delete the initial POWER_ON (pushed by transient_on during set_layer)
+    // and place our new POWER_ON at the end of the queue. This would cause RENDER_FRAME 
+    // to execute before the LEDs actually have physical power, resulting in dead LEDs.
+    pk_ug_queue_push_power(PK_UG_TASK_POWER_ON);
+
     if (pk_underglow_effects[state.current_effects[active_profile_index]].is_layer_indicator) {
         runtime_state.layer_enabled = true;
         zmk_pk_underglow_set_layer(pk_underglow_top_layer());
@@ -71,7 +80,6 @@ int zmk_pk_underglow_on(void) {
         k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
     }
 
-    pk_ug_queue_push_power(PK_UG_TASK_POWER_ON);
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     pk_ug_queue_push_sync(pk_underglow_top_layer());
 #endif
