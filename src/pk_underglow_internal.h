@@ -14,6 +14,7 @@
 #define STRIP_NUM_PIXELS DT_PROP(STRIP_CHOSEN, chain_length)
 
 void zmk_pk_underglow_set_layer(uint8_t layer);
+int zmk_pk_underglow_save_state(void);
 struct zmk_behavior_binding;
 int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings, size_t rgbmap_len, uint8_t layer);
 
@@ -88,6 +89,12 @@ extern uint16_t global_rainbow_hue;
 extern uint16_t pixel_base_hues[STRIP_NUM_PIXELS];
 extern int center_row;
 extern int center_col;
+extern const struct device *led_strip;
+extern struct k_timer underglow_tick;
+
+#if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
+extern struct k_work_delayable underglow_save_work;
+#endif
 
 // Utility functions
 struct zmk_led_hsb hsb_scale_min_max(struct zmk_led_hsb hsb);

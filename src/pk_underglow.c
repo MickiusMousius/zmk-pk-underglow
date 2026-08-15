@@ -69,7 +69,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 uint16_t global_rainbow_hue = 0;
 uint16_t pixel_base_hues[STRIP_NUM_PIXELS];
 
-static const struct device *led_strip;
+const struct device *led_strip;
 
 struct led_rgb pixels[STRIP_NUM_PIXELS];
 
@@ -185,7 +185,7 @@ static void zmk_pk_underglow_save_state_work(struct k_work *_work) { pk_ug_queue
 
 void pk_ug_task_save_settings_execute(void) { settings_save_one("rgb/underglow/state", &state, sizeof(state)); }
 
-static struct k_work_delayable underglow_save_work;
+struct k_work_delayable underglow_save_work;
 #else
 void pk_ug_task_save_settings_execute(void) {}
 #endif
@@ -303,61 +303,8 @@ static int zmk_pk_underglow_init(void) {
 
 
 /* ==========================================================================
- * 4. PUBLIC API & STATE MUTATORS
+ * 4. POWER EXECUTORS
  * ========================================================================== */
-
-int zmk_pk_underglow_save_state(void) {
-#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-    pk_ug_queue_push_sync(pk_underglow_top_layer());
-#endif
-#if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
-    int ret = k_work_reschedule(&underglow_save_work, K_MSEC(CONFIG_ZMK_SETTINGS_SAVE_DEBOUNCE));
-    return MIN(ret, 0);
-#else
-    return 0;
-#endif
-}
-
-
-int zmk_pk_underglow_get_state(bool *on_off) {
-    if (!led_strip)
-        return -ENODEV;
-
-    *on_off = runtime_state.on;
-    return 0;
-}
-
-
-int zmk_pk_underglow_on(void) {
-    runtime_state.on = true;
-    if (pk_underglow_effects[state.current_effects[active_profile_index]].is_layer_indicator) {
-        runtime_state.layer_enabled = true;
-        zmk_pk_underglow_set_layer(pk_underglow_top_layer());
-    } else {
-        state.animation_step = 0;
-        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
-    }
-    
-    pk_ug_queue_push_power(PK_UG_TASK_POWER_ON, true);
-#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-    pk_ug_queue_push_sync(pk_underglow_top_layer());
-#endif
-    return 0;
-}
-
-
-int zmk_pk_underglow_transient_on(void) {
-    if (!led_strip)
-        return -ENODEV;
-
-    state.animation_step = 0;
-
-    pk_ug_queue_push_power(PK_UG_TASK_POWER_ON, false);
-    k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
-
-    return 0;
-}
-
 
 void pk_ug_task_power_on_execute(void) {
     if (is_powered) {
@@ -388,7 +335,6 @@ void pk_ug_task_power_on_execute(void) {
     power_on_uptime = k_uptime_get();
     raise_pk_underglow_power_changed((struct pk_underglow_power_changed){.is_powered = true});
 }
-
 
 void pk_ug_task_power_off_execute(void) {
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
@@ -421,181 +367,7 @@ void pk_ug_task_power_off_execute(void) {
     raise_pk_underglow_power_changed((struct pk_underglow_power_changed){.is_powered = false});
 }
 
-
-int zmk_pk_underglow_off(void) {
-    runtime_state.on = false;
-    runtime_state.layer_enabled = false;
-    
-    pk_ug_queue_push_power(PK_UG_TASK_POWER_OFF, true);
-    k_timer_stop(&underglow_tick);
-#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-    pk_ug_queue_push_sync(pk_underglow_top_layer());
-#endif
-    return 0;
-}
-
-
-int zmk_pk_underglow_transient_off(void) {
-    if (!led_strip)
-        return -ENODEV;
-
-    if (!is_powered)
-        return 0;
-
-    pk_ug_queue_push_power(PK_UG_TASK_POWER_OFF, false);
-    k_timer_stop(&underglow_tick);
-    return 0;
-}
-
-
-int zmk_pk_underglow_calc_effect(int direction) {
-    return (state.current_effects[active_profile_index] + pk_underglow_effects_count + direction) %
-           pk_underglow_effects_count;
-}
-
-
-int zmk_pk_underglow_select_effect(int effect) {
-    if (!led_strip)
-        return -ENODEV;
-
-    if (effect < 0 || effect >= pk_underglow_effects_count) {
-        return -EINVAL;
-    }
-
-    state.current_effects[active_profile_index] = effect;
-    state.animation_step = 0;
-
-    if (pk_underglow_effects[effect].select) {
-        pk_underglow_effects[effect].select();
-    }
-
-    runtime_state.layer_enabled = pk_underglow_effects[effect].is_layer_indicator;
-
-    LOG_INF("Selected effect: %d, layer_enabled: %d, state.on: %d", effect, runtime_state.layer_enabled, runtime_state.on);
-
-    if (runtime_state.layer_enabled) {
-        zmk_pk_underglow_set_layer(pk_underglow_top_layer());
-    } else if (runtime_state.on) {
-        LOG_INF("Restarting animation timer for effect %d", effect);
-        zmk_pk_underglow_transient_on();
-    }
-    return zmk_pk_underglow_save_state();
-}
-
-
-int zmk_pk_underglow_cycle_effect(int direction) {
-    return zmk_pk_underglow_select_effect(zmk_pk_underglow_calc_effect(direction));
-}
-
-
-int zmk_pk_underglow_toggle(void) { return runtime_state.on ? zmk_pk_underglow_off() : zmk_pk_underglow_on(); }
-
-void zmk_pk_underglow_set_layer(uint8_t layer) {
-    LOG_INF("Setting pk underglow layer: %d. layer_enabled: %d, state.on: %d", layer, runtime_state.layer_enabled, runtime_state.on);
-    if (!runtime_state.layer_enabled || !runtime_state.on)
-        return;
-
-    const struct zmk_behavior_binding *rgbmap = pk_underglow_get_bindings(layer);
-    if (rgbmap != NULL && zmk_pk_underglow_apply_rgbmap(rgbmap, ZMK_KEYMAP_LEN, layer)) {
-        if (!is_powered) {
-            zmk_pk_underglow_transient_on();
-        }
-
-        k_timer_stop(&underglow_tick);
-        state.animation_step = 0;
-        int fade_delay = zmk_rgbmap_fade_delay(layer);
-        bool animated = zmk_rgbmap_is_animated(layer);
-        if (fade_delay > 0) {
-            k_timer_start(&underglow_tick, K_SECONDS(fade_delay), K_MSEC(PK_UG_FRAME_DURATION));
-        } else if (animated || fade_delay == 0) {
-            k_timer_start(&underglow_tick, K_MSEC(PK_UG_FRAME_DURATION), K_MSEC(PK_UG_FRAME_DURATION));
-        }
-
-        // Enqueue a render frame to the background thread to write the pixels.
-        // If power is turning on, this will safely execute AFTER the power stabilizes.
-        pk_ug_queue_push(PK_UG_TASK_RENDER_FRAME);
-    } else {
-        zmk_pk_underglow_transient_off();
-    }
-}
-
-
-int zmk_pk_underglow_set_hsb(struct zmk_led_hsb color) {
-    if (color.h > HUE_MAX || color.s > SAT_MAX || color.b > BRT_MAX) {
-        return -ENOTSUP;
-    }
-
-    state.colors[active_profile_index] = color;
-
-    if (runtime_state.layer_enabled) {
-        zmk_pk_underglow_set_layer(pk_underglow_top_layer());
-    }
-
-    return zmk_pk_underglow_save_state();
-}
-
-
-struct zmk_led_hsb zmk_pk_underglow_calc_hue(int direction) {
-    struct zmk_led_hsb color = state.colors[active_profile_index];
-
-    color.h += HUE_MAX + (direction * CONFIG_ZMK_PK_UNDERGLOW_HUE_STEP);
-    color.h %= HUE_MAX;
-
-    return color;
-}
-
-
-struct zmk_led_hsb zmk_pk_underglow_calc_sat(int direction) {
-    struct zmk_led_hsb color = state.colors[active_profile_index];
-
-    int s = color.s + (direction * CONFIG_ZMK_PK_UNDERGLOW_SAT_STEP);
-    color.s = CLAMP(s, 0, SAT_MAX);
-
-    return color;
-}
-
-
-struct zmk_led_hsb zmk_pk_underglow_calc_brt(int direction) {
-    struct zmk_led_hsb color = state.colors[active_profile_index];
-
-    int b = color.b + (direction * CONFIG_ZMK_PK_UNDERGLOW_BRT_STEP);
-    color.b = CLAMP(b, 0, BRT_MAX);
-
-    return color;
-}
-
-
-int zmk_pk_underglow_change_hue(int direction) {
-    if (!led_strip)
-        return -ENODEV;
-    return zmk_pk_underglow_set_hsb(zmk_pk_underglow_calc_hue(direction));
-}
-
-
-int zmk_pk_underglow_change_sat(int direction) {
-    if (!led_strip)
-        return -ENODEV;
-    return zmk_pk_underglow_set_hsb(zmk_pk_underglow_calc_sat(direction));
-}
-
-
-int zmk_pk_underglow_change_brt(int direction) {
-    if (!led_strip)
-        return -ENODEV;
-    return zmk_pk_underglow_set_hsb(zmk_pk_underglow_calc_brt(direction));
-}
-
-
-int zmk_pk_underglow_change_spd(int direction) {
-    if (!led_strip)
-        return -ENODEV;
-
-    int speed = state.effect_speeds[state.current_effects[active_profile_index]] + direction;
-    state.effect_speeds[state.current_effects[active_profile_index]] = CLAMP(speed, 1, 5);
-
-    return zmk_pk_underglow_save_state();
-}
-
+bool zmk_pk_underglow_is_on(void) { return is_powered; }
 
 /* ==========================================================================
  * 5. EVENT LISTENERS & AUTO STATE
@@ -846,23 +618,7 @@ ZMK_SUBSCRIPTION(pk_underglow_fireworks, ble_pairing_complete);
 #endif
 SYS_INIT(zmk_pk_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 
-struct zmk_led_hsb zmk_pk_underglow_get_color(void) { return state.colors[active_profile_index]; }
 
-const char *zmk_pk_underglow_get_effect_name(void) {
-    return pk_underglow_effects[state.current_effects[active_profile_index]].name;
-}
-
-
-uint8_t zmk_pk_underglow_get_speed(void) { return state.effect_speeds[state.current_effects[active_profile_index]]; }
-
-
-bool zmk_pk_underglow_is_on(void) { return is_powered; }
-
-
-int zmk_pk_underglow_hsb_to_hex(struct zmk_led_hsb hsb) {
-    struct led_rgb rgb = hsb_to_rgb(hsb);
-    return (rgb.r << 16) | (rgb.g << 8) | rgb.b;
-}
 
 
 #if IS_ENABLED(CONFIG_PM_DEVICE)
