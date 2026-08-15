@@ -12,7 +12,7 @@
 #include <zmk/event_manager.h>
 #include <zmk/events/ble_passkey_state_changed.h>
 #include <zmk/events/pk_underglow_color_changed.h>
-#include <zmk/public_api.h>
+#include <zmk/pk_underglow/public_api.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 

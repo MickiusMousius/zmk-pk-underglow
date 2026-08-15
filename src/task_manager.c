@@ -26,7 +26,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <zmk/task_manager.h>
+#include <zmk/pk_underglow/task_manager.h>
 
 LOG_MODULE_DECLARE(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <zephyr/kernel.h>
-#include <zmk/public_api.h>
+#include <zmk/pk_underglow/public_api.h>
 
 typedef enum {
     PK_UG_TASK_POWER_ON,

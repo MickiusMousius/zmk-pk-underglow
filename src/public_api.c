@@ -22,12 +22,12 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
 
-#include <zmk/boot_manager.h>
 #include <zmk/keymap.h>
 #include <zmk/matrix.h>
-#include <zmk/pk_underglow_layer.h>
-#include <zmk/public_api.h>
-#include <zmk/task_manager.h>
+#include <zmk/pk_underglow/boot_manager.h>
+#include <zmk/pk_underglow/pk_underglow_layer.h>
+#include <zmk/pk_underglow/public_api.h>
+#include <zmk/pk_underglow/task_manager.h>
 
 #include "pk_underglow_internal.h"
 

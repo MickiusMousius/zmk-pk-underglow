@@ -1,4 +1,4 @@
-#include "../../include/dt-bindings/zmk/hid_indicators.h"
+#include "../../include/dt-bindings/zmk/pk_underglow/hid_indicators.h"
 
 / {
     behaviors {

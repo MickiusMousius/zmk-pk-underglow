@@ -9,7 +9,7 @@
 #include "../pk_underglow_internal.h"
 #include <drivers/behavior.h>
 #include <zmk/matrix.h>
-#include <zmk/pk_underglow_layer.h>
+#include <zmk/pk_underglow/pk_underglow_layer.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/sys/util.h>

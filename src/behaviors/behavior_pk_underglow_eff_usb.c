@@ -10,7 +10,7 @@
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
 #include <zmk/endpoints.h>
-#include <zmk/public_api.h>
+#include <zmk/pk_underglow/public_api.h>
 #include <zmk/usb.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);

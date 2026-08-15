@@ -13,7 +13,7 @@
 #include <dt-bindings/zmk/rgb.h>
 #include <zmk/events/pk_underglow_settings_changed.h>
 #include <zmk/keymap.h>
-#include <zmk/public_api.h>
+#include <zmk/pk_underglow/public_api.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
@@ -119,6 +119,8 @@ static const struct behavior_parameter_value_metadata hsv_p1_value_metadata_valu
 
 
 
+
+
 static const struct behavior_parameter_value_metadata hsv_p2_value_metadata_values[] = {
     {
         .display_name = "Color",
@@ -141,12 +143,16 @@ static const struct behavior_parameter_value_metadata hsv_p2_value_metadata_valu
 
 
 
+
+
 static const struct behavior_parameter_metadata_set hsv_value_metadata_set = {
     .param1_values = hsv_p1_value_metadata_values,
     .param1_values_len = ARRAY_SIZE(hsv_p1_value_metadata_values),
     .param_values = hsv_p2_value_metadata_values,
     .param_values_len = ARRAY_SIZE(hsv_p2_value_metadata_values),
 };
+
+
 
 
 

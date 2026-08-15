@@ -20,8 +20,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/settings/settings.h>
-#include <zmk/boot_manager.h>
-#include <zmk/public_api.h>
+#include <zmk/pk_underglow/boot_manager.h>
+#include <zmk/pk_underglow/public_api.h>
 
 LOG_MODULE_DECLARE(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);
 
