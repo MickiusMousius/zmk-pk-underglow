@@ -457,7 +457,7 @@ void pk_ug_task_sync_state_execute(uint8_t layer) {
         .position = 0,
         .timestamp = k_uptime_get(),
     };
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < ZMK_SPLIT_CENTRAL_PERIPHERAL_COUNT; i++) {
         zmk_split_central_invoke_behavior(i, &binding, event, true);
         zmk_split_central_invoke_behavior(i, &binding, event, false);
     }
