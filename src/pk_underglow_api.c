@@ -58,7 +58,7 @@ int zmk_pk_underglow_on(void) {
         k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
     }
     
-    pk_ug_queue_push_power(PK_UG_TASK_POWER_ON, true);
+    pk_ug_queue_push_power(PK_UG_TASK_POWER_ON);
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     pk_ug_queue_push_sync(pk_underglow_top_layer());
 #endif
@@ -71,7 +71,7 @@ int zmk_pk_underglow_transient_on(void) {
 
     state.animation_step = 0;
 
-    pk_ug_queue_push_power(PK_UG_TASK_POWER_ON, false);
+    pk_ug_queue_push_power(PK_UG_TASK_POWER_ON);
     k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
 
     return 0;
@@ -81,7 +81,7 @@ int zmk_pk_underglow_off(void) {
     runtime_state.on = false;
     runtime_state.layer_enabled = false;
     
-    pk_ug_queue_push_power(PK_UG_TASK_POWER_OFF, true);
+    pk_ug_queue_push_power(PK_UG_TASK_POWER_OFF);
     k_timer_stop(&underglow_tick);
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     pk_ug_queue_push_sync(pk_underglow_top_layer());
@@ -96,7 +96,7 @@ int zmk_pk_underglow_transient_off(void) {
     if (!zmk_pk_underglow_is_on())
         return 0;
 
-    pk_ug_queue_push_power(PK_UG_TASK_POWER_OFF, false);
+    pk_ug_queue_push_power(PK_UG_TASK_POWER_OFF);
     k_timer_stop(&underglow_tick);
     return 0;
 }

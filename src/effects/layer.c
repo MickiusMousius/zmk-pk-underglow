@@ -162,5 +162,11 @@ uint8_t pk_underglow_top_layer(void) {
 #endif
 }
 
+#if !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+void zmk_pk_underglow_set_peripheral_layer(uint8_t layer) {
+    pk_underglow_peripheral_synced_layer = layer;
+    zmk_pk_underglow_set_layer(layer);
+}
+#endif
 
 #endif /* DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT) */

@@ -29,3 +29,4 @@ const struct zmk_behavior_binding *pk_underglow_get_bindings(uint8_t layer);
 
 
 uint8_t pk_underglow_top_layer(void);
+void zmk_pk_underglow_set_peripheral_layer(uint8_t layer);

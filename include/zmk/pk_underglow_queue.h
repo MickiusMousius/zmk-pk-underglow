@@ -17,15 +17,12 @@ struct pk_ug_task {
         struct {
             uint8_t layer;
         } sync;
-        struct {
-            bool user_initiated;
-        } power;
     } payload;
 };
 
 
 void pk_ug_queue_push(pk_ug_task_type_t type);
-void pk_ug_queue_push_power(pk_ug_task_type_t type, bool user_initiated);
+void pk_ug_queue_push_power(pk_ug_task_type_t type);
 void pk_ug_queue_push_sync(uint8_t layer);
 int pk_ug_queue_init(void);
 

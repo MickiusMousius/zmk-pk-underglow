@@ -51,7 +51,7 @@ void pk_ug_queue_push(pk_ug_task_type_t type) {
     k_mutex_unlock(&queue_mutex);
 }
 
-void pk_ug_queue_push_power(pk_ug_task_type_t type, bool user_initiated) {
+void pk_ug_queue_push_power(pk_ug_task_type_t type) {
     k_mutex_lock(&queue_mutex, K_FOREVER);
 
     // Deduplication and Invalidation
@@ -82,7 +82,6 @@ void pk_ug_queue_push_power(pk_ug_task_type_t type, bool user_initiated) {
 
     if (queue_head < MAX_QUEUE_SIZE) {
         task_queue[queue_head].type = type;
-        task_queue[queue_head].payload.power.user_initiated = user_initiated;
         queue_head++;
         k_sem_give(&queue_sem);
     } else {
@@ -139,15 +138,9 @@ static void ug_worker_thread(void *p1, void *p2, void *p3) {
         switch (current_task.type) {
         case PK_UG_TASK_POWER_ON:
             pk_ug_task_power_on_execute();
-            if (current_task.payload.power.user_initiated) {
-                pk_ug_queue_push(PK_UG_TASK_SAVE_SETTINGS);
-            }
             break;
         case PK_UG_TASK_POWER_OFF:
             pk_ug_task_power_off_execute();
-            if (current_task.payload.power.user_initiated) {
-                pk_ug_queue_push(PK_UG_TASK_SAVE_SETTINGS);
-            }
             break;
         case PK_UG_TASK_RENDER_FRAME:
             pk_ug_task_render_frame_execute();

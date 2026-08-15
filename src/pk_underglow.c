@@ -105,7 +105,6 @@ static uint8_t get_active_profile(void) {
 
 
 static bool is_powered = false;
-static uint64_t power_on_uptime = 0;
 
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_EXT_POWER)
 static const struct device *const ext_power = DEVICE_DT_GET(DT_INST(0, zmk_ext_power_generic));
@@ -180,6 +179,7 @@ static int rgb_settings_set(const char *name, size_t len, settings_read_cb read_
             if (pk_underglow_effects[state.current_effects[active_profile_index]].select) {
                 pk_underglow_effects[state.current_effects[active_profile_index]].select();
             }
+            runtime_state.layer_enabled = pk_underglow_effects[state.current_effects[active_profile_index]].is_layer_indicator;
 
             return 0;
         }
@@ -271,13 +271,7 @@ static int zmk_pk_underglow_init(void) {
         LOG_INF("Power GPIO configured successfully");
     }
 
-#if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     state = (struct pk_underglow_state){animation_step : 0};
-    runtime_state.on = false;
-#else
-    state = (struct pk_underglow_state){animation_step : 0};
-    runtime_state.on = IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_ON_START);
-#endif
 
     active_profile_index = get_active_profile();
 
@@ -344,7 +338,6 @@ void pk_ug_task_power_on_execute(void) {
     k_sleep(K_MSEC(PK_UG_POWER_STABILIZATION_MS));
 
     is_powered = true;
-    power_on_uptime = k_uptime_get();
     raise_pk_underglow_power_changed((struct pk_underglow_power_changed){.is_powered = true});
 }
 
@@ -455,13 +448,7 @@ BT_CONN_CB_DEFINE(pk_underglow_bt_conn_cb) = {
 
 #endif
 
-#if !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-extern uint8_t pk_underglow_peripheral_synced_layer;
-void zmk_pk_underglow_set_peripheral_layer(uint8_t layer) {
-    pk_underglow_peripheral_synced_layer = layer;
-    zmk_pk_underglow_set_layer(layer);
-}
-#endif
+
 
 static int pk_underglow_event_listener(const zmk_event_t *eh) {
     if (as_zmk_activity_state_changed(eh)) {
@@ -591,11 +578,12 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
             state.current_effects[active_profile_index], state.colors[active_profile_index].h, layer);
 
     // Normal sync
-    if (runtime_state.layer_enabled) {
-        zmk_pk_underglow_set_peripheral_layer(layer);
-    } else if (runtime_state.on) {
+    if (runtime_state.on) {
         if (!is_powered || effect_changed) {
             zmk_pk_underglow_transient_on();
+        }
+        if (runtime_state.layer_enabled) {
+            zmk_pk_underglow_set_peripheral_layer(layer);
         }
     } else {
         zmk_pk_underglow_transient_off();
@@ -629,28 +617,3 @@ ZMK_LISTENER(pk_underglow_fireworks, pk_underglow_fireworks_listener);
 ZMK_SUBSCRIPTION(pk_underglow_fireworks, ble_pairing_complete);
 #endif
 SYS_INIT(zmk_pk_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
-
-
-
-
-#if IS_ENABLED(CONFIG_PM_DEVICE)
-static int pk_underglow_pm_action(const struct device *dev, enum pm_device_action action) {
-    switch (action) {
-    case PM_DEVICE_ACTION_SUSPEND:
-        if (is_powered) {
-            pk_ug_task_power_off_execute();
-        }
-        break;
-    default:
-        return -ENOTSUP;
-    }
-    return 0;
-}
-
-
-static int pk_underglow_pm_init(const struct device *dev) { return 0; }
-
-PM_DEVICE_DEFINE(pk_underglow_pm, pk_underglow_pm_action);
-DEVICE_DEFINE(pk_underglow_pm, "pk_underglow_pm", pk_underglow_pm_init, PM_DEVICE_GET(pk_underglow_pm), NULL, NULL,
-              POST_KERNEL, CONFIG_APPLICATION_INIT_PRIORITY, NULL);
-#endif
