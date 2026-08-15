@@ -13,8 +13,7 @@
 #define STRIP_CHOSEN DT_CHOSEN(zmk_underglow)
 #define STRIP_NUM_PIXELS DT_PROP(STRIP_CHOSEN, chain_length)
 
-void zmk_pk_underglow_set_layer(uint8_t layer, bool wakeup);
-int zmk_pk_underglow_transient_off(void);
+void zmk_pk_underglow_set_layer(uint8_t layer);
 struct zmk_behavior_binding;
 int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings, size_t rgbmap_len, uint8_t layer);
 
@@ -72,6 +71,9 @@ struct pk_underglow_state {
     uint8_t current_effects[ZMK_ENDPOINT_COUNT];
     uint8_t effect_speeds[MAX_UNDERGLOW_EFFECTS];
     uint16_t animation_step;
+};
+
+struct pk_underglow_runtime_state {
     bool on;
     bool layer_enabled;
 };
@@ -79,6 +81,7 @@ struct pk_underglow_state {
 
 // Global State
 extern struct pk_underglow_state state;
+extern struct pk_underglow_runtime_state runtime_state;
 extern uint8_t active_profile_index;
 extern struct led_rgb pixels[STRIP_NUM_PIXELS];
 extern uint16_t global_rainbow_hue;
