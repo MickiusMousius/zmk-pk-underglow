@@ -420,7 +420,7 @@ void pk_ug_task_sync_state_execute(uint8_t layer) {
                       ((state.colors[active_profile_index].b & 0xFF) << 24);
     uint32_t param2 = (state.current_effects[active_profile_index] & 0xFF) |
                       ((state.effect_speeds[state.current_effects[active_profile_index]] & 0xFF) << 8) |
-                      ((layer & 0xFF) << 16) | ((runtime_state.on ? 1 : 0) << 24) |
+                      ((layer & 0xFF) << 16) | ((is_powered ? 1 : 0) << 24) |
                       ((runtime_state.layer_enabled ? 1 : 0) << 27);
 
     LOG_DBG("Central: Broadcasting ug_sync with layer %d", layer);
@@ -490,6 +490,15 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
         if (activity_state == ZMK_ACTIVITY_SLEEP) {
             zmk_pk_underglow_off();
         }
+#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
+        else if (activity_state == ZMK_ACTIVITY_IDLE) {
+            zmk_pk_underglow_transient_off();
+        } else if (activity_state == ZMK_ACTIVITY_ACTIVE) {
+            if (runtime_state.on) {
+                zmk_pk_underglow_transient_on();
+            }
+        }
+#endif
         return ZMK_EV_EVENT_BUBBLE;
     }
 

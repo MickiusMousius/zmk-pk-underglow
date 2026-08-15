@@ -88,6 +88,10 @@ int zmk_pk_underglow_transient_on(void) {
     pk_ug_queue_push_power(PK_UG_TASK_POWER_ON);
     k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
 
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    pk_ug_queue_push_sync(pk_underglow_top_layer());
+#endif
+
     return 0;
 }
 
@@ -114,6 +118,11 @@ int zmk_pk_underglow_transient_off(void) {
 
     pk_ug_queue_push_power(PK_UG_TASK_POWER_OFF);
     k_timer_stop(&underglow_tick);
+
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    pk_ug_queue_push_sync(pk_underglow_top_layer());
+#endif
+
     return 0;
 }
 
