@@ -68,6 +68,9 @@
 
 #include <zmk/endpoints.h>
 #include <zmk/events/endpoint_changed.h>
+#if IS_ENABLED(CONFIG_ZMK_BLE)
+#include <zmk/events/ble_active_profile_changed.h>
+#endif
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 #include <zmk/split/central.h>
@@ -107,6 +110,18 @@ uint8_t active_profile_index = 0;
 static uint8_t get_active_profile(void) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
     struct zmk_endpoint_instance endpoint = zmk_endpoints_selected();
+
+#if IS_ENABLED(CONFIG_ZMK_BLE)
+    // ZMK's endpoint manager caches the active BLE profile at SYS_INIT before NVS is loaded.
+    // This causes the endpoint's profile index to be stale (0) until a BLE connection is 
+    // successfully established and an event is fired. To ensure we load the correct colors
+    // immediately after boot/wake, we bypass the cached endpoint value and directly query 
+    // the BLE subsystem for the true active profile.
+    if (endpoint.transport == ZMK_TRANSPORT_BLE) {
+        endpoint.ble.profile_index = zmk_ble_active_profile_index();
+    }
+#endif
+
     int index = zmk_endpoint_instance_to_index(endpoint);
     if (index < 0 || index >= ZMK_ENDPOINT_COUNT) {
         return 0;
@@ -591,12 +606,18 @@ ZMK_SUBSCRIPTION(pk_underglow, zmk_underglow_color_changed);
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
 static int zmk_pk_underglow_endpoint_changed(const zmk_event_t *eh) {
-    uint8_t new_profile = get_active_profile();
-    if (active_profile_index != new_profile) {
-        active_profile_index = new_profile;
+    if (as_zmk_endpoint_changed(eh)
+#if IS_ENABLED(CONFIG_ZMK_BLE)
+        || as_zmk_ble_active_profile_changed(eh)
+#endif
+    ) {
+        uint8_t new_profile = get_active_profile();
+        if (active_profile_index != new_profile) {
+            active_profile_index = new_profile;
 
-        // Re-initialize the effect for the new profile (calls .select, updates layer_enabled, resets animation)
-        zmk_pk_underglow_select_effect(state.current_effects[active_profile_index]);
+            // Re-initialize the effect for the new profile (calls .select, updates layer_enabled, resets animation)
+            zmk_pk_underglow_select_effect(state.current_effects[active_profile_index]);
+        }
     }
     return ZMK_EV_EVENT_BUBBLE;
 }
@@ -604,6 +625,9 @@ static int zmk_pk_underglow_endpoint_changed(const zmk_event_t *eh) {
 
 ZMK_LISTENER(pk_underglow_endpoint, zmk_pk_underglow_endpoint_changed);
 ZMK_SUBSCRIPTION(pk_underglow_endpoint, zmk_endpoint_changed);
+#if IS_ENABLED(CONFIG_ZMK_BLE)
+ZMK_SUBSCRIPTION(pk_underglow_endpoint, zmk_ble_active_profile_changed);
+#endif
 #endif
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
