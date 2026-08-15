@@ -10,11 +10,11 @@
  * - Defer operations that require state saves to the background.
  *
  * Persistent State (NVS Flash Writes):
- * To prevent degrading the flash memory with excessive writes during rapid visual 
- * adjustments (e.g. holding down a hue cycle button), this API schedules a delayed 
- * Zephyr work item. This delay explicitly respects the global ZMK settings debounce 
- * configuration (CONFIG_ZMK_SETTINGS_SAVE_DEBOUNCE). Each repeated call reschedules 
- * the timer (debounces). Only after the timer expires is a SAVE_SETTINGS task pushed 
+ * To prevent degrading the flash memory with excessive writes during rapid visual
+ * adjustments (e.g. holding down a hue cycle button), this API schedules a delayed
+ * Zephyr work item. This delay explicitly respects the global ZMK settings debounce
+ * configuration (CONFIG_ZMK_SETTINGS_SAVE_DEBOUNCE). Each repeated call reschedules
+ * the timer (debounces). Only after the timer expires is a SAVE_SETTINGS task pushed
  * to the background queue to execute the actual flash write.
  */
 
@@ -63,12 +63,12 @@ int zmk_pk_underglow_on(void) {
     pk_underglow_check_active_profile();
 
     runtime_state.on = true;
-    
+
     // CRITICAL: We must push POWER_ON before calling zmk_pk_underglow_set_layer().
     // If set_layer() successfully applies a layer map, it will push RENDER_FRAME.
-    // If we pushed POWER_ON *after* set_layer(), the background queue's deduplication 
+    // If we pushed POWER_ON *after* set_layer(), the background queue's deduplication
     // logic would delete the initial POWER_ON (pushed by transient_on during set_layer)
-    // and place our new POWER_ON at the end of the queue. This would cause RENDER_FRAME 
+    // and place our new POWER_ON at the end of the queue. This would cause RENDER_FRAME
     // to execute before the LEDs actually have physical power, resulting in dead LEDs.
     pk_ug_queue_push_power(PK_UG_TASK_POWER_ON);
 
@@ -194,6 +194,11 @@ void zmk_pk_underglow_set_layer(uint8_t layer) {
         state.animation_step = 0;
         int fade_delay = zmk_rgbmap_fade_delay(layer);
         bool animated = zmk_rgbmap_is_animated(layer);
+
+        // fade_delay logic:
+        //  > 0 : Static layer with a timeout (e.g. show for 2 seconds then turn off)
+        // == 0 : Static layer that stays on forever (e.g. caps lock indicator)
+        //  < 0 : Fallback to `animated`. If true, runs the timer continuously.
         if (fade_delay > 0) {
             k_timer_start(&underglow_tick, K_SECONDS(fade_delay), K_MSEC(PK_UG_FRAME_DURATION));
         } else if (animated || fade_delay == 0) {

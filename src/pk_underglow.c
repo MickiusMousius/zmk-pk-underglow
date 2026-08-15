@@ -16,16 +16,16 @@
  * - Processing split central-peripheral sync payloads and broadcasting state.
  *
  * Core Behavioral Mechanics:
- * 1. Power State: The hardware power state (`runtime_state.on`) is completely ephemeral and 
- *    is intentionally isolated from the flash-persisted `state` struct. This prevents the 
- *    keyboard from unexpectedly booting up with LEDs on if it was previously left on before a 
+ * 1. Power State: The hardware power state (`runtime_state.on`) is completely ephemeral and
+ *    is intentionally isolated from the flash-persisted `state` struct. This prevents the
+ *    keyboard from unexpectedly booting up with LEDs on if it was previously left on before a
  *    deep sleep or reset. Power-on always requires an explicit user or runtime action.
- * 2. NVS Boot Load: Flash memory is read exactly once during the boot process. ZMK fires a 
- *    `settings_load()` sweep which unpacks the persistent state (effect IDs, colors, speeds) 
+ * 2. NVS Boot Load: Flash memory is read exactly once during the boot process. ZMK fires a
+ *    `settings_load()` sweep which unpacks the persistent state (effect IDs, colors, speeds)
  *    directly into the `state` RAM struct via the `rgb_settings_set` callback.
- * 3. Bluetooth Sync: The central pushes a 64-bit dense payload containing all current visual 
- *    and power states to the peripheral whenever settings change or layers shift. The peripheral 
- *    unpacks this in `zmk_pk_underglow_sync_state` to perfectly mirror the central, ensuring 
+ * 3. Bluetooth Sync: The central pushes a 64-bit dense payload containing all current visual
+ *    and power states to the peripheral whenever settings change or layers shift. The peripheral
+ *    unpacks this in `zmk_pk_underglow_sync_state` to perfectly mirror the central, ensuring
  *    intermediate steps are deduplicated out.
  */
 
@@ -116,15 +116,16 @@ static uint8_t get_active_profile(void) {
 #endif
 }
 
+
 /**
  * Check and synchronize the active profile.
- * 
- * Why this is necessary: During a cold boot (or deep sleep wake), ZMK loads settings from NVS. 
- * If our underglow settings are loaded before ZMK's endpoint settings, this subsystem will 
- * ask for the active profile and receive `0` because ZMK hasn't loaded the real endpoint yet. 
- * ZMK then silently loads the real endpoint (e.g. Profile 2) but does NOT fire a 
- * `zmk_endpoint_changed` event during boot. This leaves the underglow stuck rendering Profile 0's 
- * effect (often defaulting to White). This check runs when power is explicitly turned on to catch 
+ *
+ * Why this is necessary: During a cold boot (or deep sleep wake), ZMK loads settings from NVS.
+ * If our underglow settings are loaded before ZMK's endpoint settings, this subsystem will
+ * ask for the active profile and receive `0` because ZMK hasn't loaded the real endpoint yet.
+ * ZMK then silently loads the real endpoint (e.g. Profile 2) but does NOT fire a
+ * `zmk_endpoint_changed` event during boot. This leaves the underglow stuck rendering Profile 0's
+ * effect (often defaulting to White). This check runs when power is explicitly turned on to catch
  * that silent mismatch and force a sync to the correct profile before the LEDs light up.
  */
 void pk_underglow_check_active_profile(void) {
@@ -673,6 +674,7 @@ static int pk_underglow_pm_action(const struct device *dev, enum pm_device_actio
     }
     return 0;
 }
+
 
 static int pk_underglow_pm_init(const struct device *dev) { return 0; }
 
