@@ -2,7 +2,7 @@
  * @file pk_underglow_queue.c
  * @brief Background work queue for the ZMK pk_underglow module.
  *
- * This file is responsible for managing a dedicated background Zephyr thread 
+ * This file is responsible for managing a dedicated background Zephyr thread
  * that handles non-blocking execution of expensive operations, such as:
  * - Pushing rendering frames out to the LED strip.
  * - Safely toggling external power GPIOs and allowing for stabilization delays.
@@ -50,6 +50,7 @@ void pk_ug_queue_push(pk_ug_task_type_t type) {
 
     k_mutex_unlock(&queue_mutex);
 }
+
 
 void pk_ug_queue_push_power(pk_ug_task_type_t type) {
     k_mutex_lock(&queue_mutex, K_FOREVER);

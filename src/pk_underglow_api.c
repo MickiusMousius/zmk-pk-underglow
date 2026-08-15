@@ -2,7 +2,7 @@
  * @file pk_underglow_api.c
  * @brief Public API and state mutators for the ZMK pk_underglow module.
  *
- * This file is responsible for housing the high-level API routines that are 
+ * This file is responsible for housing the high-level API routines that are
  * invoked by ZMK keymap behaviors. It includes functions to:
  * - Toggle power on and off.
  * - Change the active effect, hue, saturation, and brightness.
@@ -14,11 +14,11 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
 
+#include <zmk/keymap.h>
+#include <zmk/matrix.h>
 #include <zmk/pk_underglow.h>
 #include <zmk/pk_underglow_layer.h>
 #include <zmk/pk_underglow_queue.h>
-#include <zmk/keymap.h>
-#include <zmk/matrix.h>
 
 #include "pk_underglow_internal.h"
 
@@ -40,6 +40,7 @@ int zmk_pk_underglow_save_state(void) {
 #endif
 }
 
+
 int zmk_pk_underglow_get_state(bool *on_off) {
     if (!led_strip)
         return -ENODEV;
@@ -47,6 +48,7 @@ int zmk_pk_underglow_get_state(bool *on_off) {
     *on_off = runtime_state.on;
     return 0;
 }
+
 
 int zmk_pk_underglow_on(void) {
     runtime_state.on = true;
@@ -57,13 +59,14 @@ int zmk_pk_underglow_on(void) {
         state.animation_step = 0;
         k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
     }
-    
+
     pk_ug_queue_push_power(PK_UG_TASK_POWER_ON);
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     pk_ug_queue_push_sync(pk_underglow_top_layer());
 #endif
     return 0;
 }
+
 
 int zmk_pk_underglow_transient_on(void) {
     if (!led_strip)
@@ -77,10 +80,11 @@ int zmk_pk_underglow_transient_on(void) {
     return 0;
 }
 
+
 int zmk_pk_underglow_off(void) {
     runtime_state.on = false;
     runtime_state.layer_enabled = false;
-    
+
     pk_ug_queue_push_power(PK_UG_TASK_POWER_OFF);
     k_timer_stop(&underglow_tick);
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
@@ -88,6 +92,7 @@ int zmk_pk_underglow_off(void) {
 #endif
     return 0;
 }
+
 
 int zmk_pk_underglow_transient_off(void) {
     if (!led_strip)
@@ -101,10 +106,12 @@ int zmk_pk_underglow_transient_off(void) {
     return 0;
 }
 
+
 int zmk_pk_underglow_calc_effect(int direction) {
     return (state.current_effects[active_profile_index] + pk_underglow_effects_count + direction) %
            pk_underglow_effects_count;
 }
+
 
 int zmk_pk_underglow_select_effect(int effect) {
     if (!led_strip)
@@ -123,7 +130,8 @@ int zmk_pk_underglow_select_effect(int effect) {
 
     runtime_state.layer_enabled = pk_underglow_effects[effect].is_layer_indicator;
 
-    LOG_INF("Selected effect: %d, layer_enabled: %d, state.on: %d", effect, runtime_state.layer_enabled, runtime_state.on);
+    LOG_INF("Selected effect: %d, layer_enabled: %d, state.on: %d", effect, runtime_state.layer_enabled,
+            runtime_state.on);
 
     if (runtime_state.layer_enabled) {
         zmk_pk_underglow_set_layer(pk_underglow_top_layer());
@@ -134,14 +142,17 @@ int zmk_pk_underglow_select_effect(int effect) {
     return zmk_pk_underglow_save_state();
 }
 
+
 int zmk_pk_underglow_cycle_effect(int direction) {
     return zmk_pk_underglow_select_effect(zmk_pk_underglow_calc_effect(direction));
 }
 
+
 int zmk_pk_underglow_toggle(void) { return runtime_state.on ? zmk_pk_underglow_off() : zmk_pk_underglow_on(); }
 
 void zmk_pk_underglow_set_layer(uint8_t layer) {
-    LOG_INF("Setting pk underglow layer: %d. layer_enabled: %d, state.on: %d", layer, runtime_state.layer_enabled, runtime_state.on);
+    LOG_INF("Setting pk underglow layer: %d. layer_enabled: %d, state.on: %d", layer, runtime_state.layer_enabled,
+            runtime_state.on);
     if (!runtime_state.layer_enabled || !runtime_state.on)
         return;
 
@@ -167,6 +178,7 @@ void zmk_pk_underglow_set_layer(uint8_t layer) {
     }
 }
 
+
 int zmk_pk_underglow_set_hsb(struct zmk_led_hsb color) {
     if (color.h > HUE_MAX || color.s > SAT_MAX || color.b > BRT_MAX) {
         return -ENOTSUP;
@@ -181,6 +193,7 @@ int zmk_pk_underglow_set_hsb(struct zmk_led_hsb color) {
     return zmk_pk_underglow_save_state();
 }
 
+
 struct zmk_led_hsb zmk_pk_underglow_calc_hue(int direction) {
     struct zmk_led_hsb color = state.colors[active_profile_index];
 
@@ -189,6 +202,7 @@ struct zmk_led_hsb zmk_pk_underglow_calc_hue(int direction) {
 
     return color;
 }
+
 
 struct zmk_led_hsb zmk_pk_underglow_calc_sat(int direction) {
     struct zmk_led_hsb color = state.colors[active_profile_index];
@@ -199,6 +213,7 @@ struct zmk_led_hsb zmk_pk_underglow_calc_sat(int direction) {
     return color;
 }
 
+
 struct zmk_led_hsb zmk_pk_underglow_calc_brt(int direction) {
     struct zmk_led_hsb color = state.colors[active_profile_index];
 
@@ -208,11 +223,13 @@ struct zmk_led_hsb zmk_pk_underglow_calc_brt(int direction) {
     return color;
 }
 
+
 int zmk_pk_underglow_change_hue(int direction) {
     if (!led_strip)
         return -ENODEV;
     return zmk_pk_underglow_set_hsb(zmk_pk_underglow_calc_hue(direction));
 }
+
 
 int zmk_pk_underglow_change_sat(int direction) {
     if (!led_strip)
@@ -220,11 +237,13 @@ int zmk_pk_underglow_change_sat(int direction) {
     return zmk_pk_underglow_set_hsb(zmk_pk_underglow_calc_sat(direction));
 }
 
+
 int zmk_pk_underglow_change_brt(int direction) {
     if (!led_strip)
         return -ENODEV;
     return zmk_pk_underglow_set_hsb(zmk_pk_underglow_calc_brt(direction));
 }
+
 
 int zmk_pk_underglow_change_spd(int direction) {
     if (!led_strip)
@@ -236,11 +255,13 @@ int zmk_pk_underglow_change_spd(int direction) {
     return zmk_pk_underglow_save_state();
 }
 
+
 struct zmk_led_hsb zmk_pk_underglow_get_color(void) { return state.colors[active_profile_index]; }
 
 const char *zmk_pk_underglow_get_effect_name(void) {
     return pk_underglow_effects[state.current_effects[active_profile_index]].name;
 }
+
 
 uint8_t zmk_pk_underglow_get_speed(void) { return state.effect_speeds[state.current_effects[active_profile_index]]; }
 

@@ -40,8 +40,8 @@
 #include <zmk/behavior.h>
 #include <zmk/event_manager.h>
 #include <zmk/events/activity_state_changed.h>
-#include <zmk/events/position_state_changed.h>
 #include <zmk/events/pk_underglow_power_changed.h>
+#include <zmk/events/position_state_changed.h>
 #include <zmk/events/underglow_color_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
 #include <zmk/hid_indicators.h>
@@ -179,7 +179,8 @@ static int rgb_settings_set(const char *name, size_t len, settings_read_cb read_
             if (pk_underglow_effects[state.current_effects[active_profile_index]].select) {
                 pk_underglow_effects[state.current_effects[active_profile_index]].select();
             }
-            runtime_state.layer_enabled = pk_underglow_effects[state.current_effects[active_profile_index]].is_layer_indicator;
+            runtime_state.layer_enabled =
+                pk_underglow_effects[state.current_effects[active_profile_index]].is_layer_indicator;
 
             return 0;
         }
@@ -341,6 +342,7 @@ void pk_ug_task_power_on_execute(void) {
     raise_pk_underglow_power_changed((struct pk_underglow_power_changed){.is_powered = true});
 }
 
+
 void pk_ug_task_power_off_execute(void) {
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         pixels[i] = (struct led_rgb){r : 0, g : 0, b : 0};
@@ -371,6 +373,7 @@ void pk_ug_task_power_off_execute(void) {
     is_powered = false;
     raise_pk_underglow_power_changed((struct pk_underglow_power_changed){.is_powered = false});
 }
+
 
 bool zmk_pk_underglow_is_on(void) { return is_powered; }
 
@@ -447,7 +450,6 @@ BT_CONN_CB_DEFINE(pk_underglow_bt_conn_cb) = {
 
 
 #endif
-
 
 
 static int pk_underglow_event_listener(const zmk_event_t *eh) {

@@ -4,7 +4,7 @@
  *
  * This file is responsible for exposing internal state, timer loops, and Zephyr queue objects
  * across the different C files that make up the pk_underglow subsystem.
- * It prevents circular dependencies and encapsulates internal functions that should not be 
+ * It prevents circular dependencies and encapsulates internal functions that should not be
  * directly exposed to the broader ZMK application layer.
  */
 
@@ -82,6 +82,7 @@ struct pk_underglow_state {
     uint8_t effect_speeds[MAX_UNDERGLOW_EFFECTS];
     uint16_t animation_step;
 };
+
 
 struct pk_underglow_runtime_state {
     bool on;

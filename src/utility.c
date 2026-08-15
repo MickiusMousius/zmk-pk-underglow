@@ -2,7 +2,7 @@
  * @file utility.c
  * @brief Utility functions for the ZMK pk_underglow module.
  *
- * This file is responsible for providing mathematical and color manipulation 
+ * This file is responsible for providing mathematical and color manipulation
  * helpers, such as scaling HSB values and converting between color spaces.
  */
 
