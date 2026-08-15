@@ -46,17 +46,17 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/led_strip.h>
 
-#include <zmk/public_api.h>
-#include <zmk/pk_underglow_layer.h>
 #include <zmk/boot_manager.h>
+#include <zmk/pk_underglow_layer.h>
+#include <zmk/public_api.h>
 
 #include <zmk/activity.h>
 #include <zmk/behavior.h>
 #include <zmk/event_manager.h>
 #include <zmk/events/activity_state_changed.h>
+#include <zmk/events/pk_underglow_color_changed.h>
 #include <zmk/events/pk_underglow_power_changed.h>
 #include <zmk/events/position_state_changed.h>
-#include <zmk/events/pk_underglow_color_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
 #include <zmk/hid_indicators.h>
 #include <zmk/matrix.h>
@@ -113,9 +113,9 @@ static uint8_t get_active_profile(void) {
 
 #if IS_ENABLED(CONFIG_ZMK_BLE)
     // ZMK's endpoint manager caches the active BLE profile at SYS_INIT before NVS is loaded.
-    // This causes the endpoint's profile index to be stale (0) until a BLE connection is 
+    // This causes the endpoint's profile index to be stale (0) until a BLE connection is
     // successfully established and an event is fired. To ensure we load the correct colors
-    // immediately after boot/wake, we bypass the cached endpoint value and directly query 
+    // immediately after boot/wake, we bypass the cached endpoint value and directly query
     // the BLE subsystem for the true active profile.
     if (endpoint.transport == ZMK_TRANSPORT_BLE) {
         endpoint.ble.profile_index = zmk_ble_active_profile_index();
@@ -240,10 +240,12 @@ static int rgb_settings_set(const char *name, size_t len, settings_read_cb read_
     return -ENOENT;
 }
 
+
 static int rgb_settings_commit(void) {
     zmk_pk_underglow_signal_central_nvs_loaded();
     return 0;
 }
+
 
 SETTINGS_STATIC_HANDLER_DEFINE(pk_underglow, "rgb/underglow", NULL, rgb_settings_set, NULL, NULL);
 
