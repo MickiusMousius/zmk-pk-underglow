@@ -81,7 +81,7 @@ void pk_ug_queue_push_power(pk_ug_task_type_t type, bool user_initiated) {
 }
 
 
-void pk_ug_queue_push_sync(uint8_t layer, uint8_t state_directive) {
+void pk_ug_queue_push_sync(uint8_t layer) {
     k_mutex_lock(&queue_mutex, K_FOREVER);
 
     int new_head = 0;
@@ -95,7 +95,6 @@ void pk_ug_queue_push_sync(uint8_t layer, uint8_t state_directive) {
     if (queue_head < MAX_QUEUE_SIZE) {
         task_queue[queue_head].type = PK_UG_TASK_SYNC_STATE;
         task_queue[queue_head].payload.sync.layer = layer;
-        task_queue[queue_head].payload.sync.state_directive = state_directive;
         queue_head++;
         k_sem_give(&queue_sem);
     } else {
@@ -142,7 +141,7 @@ static void ug_worker_thread(void *p1, void *p2, void *p3) {
             pk_ug_task_render_frame_execute();
             break;
         case PK_UG_TASK_SYNC_STATE:
-            pk_ug_task_sync_state_execute(current_task.payload.sync.layer, current_task.payload.sync.state_directive);
+            pk_ug_task_sync_state_execute(current_task.payload.sync.layer);
             break;
         case PK_UG_TASK_SAVE_SETTINGS:
             pk_ug_task_save_settings_execute();

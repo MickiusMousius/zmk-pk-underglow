@@ -307,6 +307,9 @@ static int zmk_pk_underglow_init(void) {
  * ========================================================================== */
 
 int zmk_pk_underglow_save_state(void) {
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    pk_ug_queue_push_sync(pk_underglow_top_layer());
+#endif
 #if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
     int ret = k_work_reschedule(&underglow_save_work, K_MSEC(CONFIG_ZMK_SETTINGS_SAVE_DEBOUNCE));
     return MIN(ret, 0);
@@ -334,6 +337,9 @@ int zmk_pk_underglow_on(void) {
     state.animation_step = 0;
     pk_ug_queue_push_power(PK_UG_TASK_POWER_ON, true);
     k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    pk_ug_queue_push_sync(pk_underglow_top_layer());
+#endif
     return 0;
 }
 
@@ -420,7 +426,9 @@ int zmk_pk_underglow_off(void) {
     
     pk_ug_queue_push_power(PK_UG_TASK_POWER_OFF, true);
     k_timer_stop(&underglow_tick);
-    
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    pk_ug_queue_push_sync(pk_underglow_top_layer());
+#endif
     return 0;
 }
 
@@ -585,15 +593,8 @@ int zmk_pk_underglow_change_spd(int direction) {
     if (!led_strip)
         return -ENODEV;
 
-    if (state.effect_speeds[state.current_effects[active_profile_index]] == 1 && direction < 0) {
-        return 0;
-    }
-
-    state.effect_speeds[state.current_effects[active_profile_index]] += direction;
-
-    if (state.effect_speeds[state.current_effects[active_profile_index]] > 5) {
-        state.effect_speeds[state.current_effects[active_profile_index]] = 5;
-    }
+    int speed = state.effect_speeds[state.current_effects[active_profile_index]] + direction;
+    state.effect_speeds[state.current_effects[active_profile_index]] = CLAMP(speed, 1, 5);
 
     return zmk_pk_underglow_save_state();
 }
@@ -603,17 +604,17 @@ int zmk_pk_underglow_change_spd(int direction) {
  * 5. EVENT LISTENERS & AUTO STATE
  * ========================================================================== */
 
-void pk_ug_task_sync_state_execute(uint8_t layer, uint8_t state_directive) {
+void pk_ug_task_sync_state_execute(uint8_t layer) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     uint32_t param1 = (state.colors[active_profile_index].h & 0xFFFF) |
                       ((state.colors[active_profile_index].s & 0xFF) << 16) |
                       ((state.colors[active_profile_index].b & 0xFF) << 24);
     uint32_t param2 = (state.current_effects[active_profile_index] & 0xFF) |
                       ((state.effect_speeds[state.current_effects[active_profile_index]] & 0xFF) << 8) |
-                      ((layer & 0xFF) << 16) | ((runtime_state.on ? 1 : 0) << 24) | ((state_directive & 0x03) << 25) |
+                      ((layer & 0xFF) << 16) | ((runtime_state.on ? 1 : 0) << 24) |
                       ((runtime_state.layer_enabled ? 1 : 0) << 27);
 
-    LOG_DBG("Central: Broadcasting ug_sync with layer %d, state_directive %d", layer, state_directive);
+    LOG_DBG("Central: Broadcasting ug_sync with layer %d", layer);
 #if DT_HAS_COMPAT_STATUS_OKAY(zmk_behavior_pk_underglow_sync)
     struct zmk_behavior_binding binding = {
         .behavior_dev = DEVICE_DT_NAME(DT_COMPAT_GET_ANY_STATUS_OKAY(zmk_behavior_pk_underglow_sync)),
@@ -644,7 +645,7 @@ static K_WORK_DELAYABLE_DEFINE(sync_peripheral_delayed_work, sync_peripheral_del
 
 static void sync_peripheral_delayed_work_handler(struct k_work *work) {
     uint8_t layer = pk_underglow_top_layer();
-    pk_ug_queue_push_sync(layer, 0); // Layer sync
+    pk_ug_queue_push_sync(layer); // Layer sync
 
     // Retry the sync a few times to ensure it succeeds even if ZMK drops
     // the initial asynchronous messages due to slow GATT discovery.
@@ -696,7 +697,7 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
         LOG_DBG("zmk_layer_state_changed: %08x", ev->state);
         uint8_t layer = pk_underglow_top_layer();
         zmk_pk_underglow_set_layer(layer);
-        pk_ug_queue_push_sync(layer, 0);
+        pk_ug_queue_push_sync(layer);
 
         return ZMK_EV_EVENT_BUBBLE;
     }
@@ -781,7 +782,7 @@ static int zmk_pk_underglow_endpoint_changed(const zmk_event_t *eh) {
         zmk_pk_underglow_select_effect(state.current_effects[active_profile_index]);
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-        pk_ug_queue_push_sync(pk_underglow_top_layer(), 0);
+        pk_ug_queue_push_sync(pk_underglow_top_layer());
 #endif
     }
     return ZMK_EV_EVENT_BUBBLE;
@@ -807,27 +808,20 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
     state.effect_speeds[state.current_effects[active_profile_index]] = (param2 >> 8) & 0xFF;
     uint8_t layer = (param2 >> 16) & 0xFF;
     runtime_state.on = (param2 >> 24) & 1;
-    uint8_t state_directive = (param2 >> 25) & 0x03;
     runtime_state.layer_enabled = (param2 >> 27) & 1;
 
-    LOG_DBG("Peripheral: Extracted ug_sync state. Effect=%d, Hue=%d, Layer=%d, "
-            "StateDirective=%d",
-            state.current_effects[active_profile_index], state.colors[active_profile_index].h, layer, state_directive);
+    LOG_DBG("Peripheral: Extracted ug_sync state. Effect=%d, Hue=%d, Layer=%d",
+            state.current_effects[active_profile_index], state.colors[active_profile_index].h, layer);
 
-    // Apply the state directive
-    if (state_directive == 2) {
-        zmk_pk_underglow_transient_off();
-    } else {
-        // Normal sync
-        if (runtime_state.layer_enabled) {
-            zmk_pk_underglow_set_peripheral_layer(layer);
-        } else if (runtime_state.on) {
-            if (!is_powered || effect_changed) {
-                zmk_pk_underglow_transient_on();
-            }
-        } else {
-            zmk_pk_underglow_transient_off();
+    // Normal sync
+    if (runtime_state.layer_enabled) {
+        zmk_pk_underglow_set_peripheral_layer(layer);
+    } else if (runtime_state.on) {
+        if (!is_powered || effect_changed) {
+            zmk_pk_underglow_transient_on();
         }
+    } else {
+        zmk_pk_underglow_transient_off();
     }
 }
 
