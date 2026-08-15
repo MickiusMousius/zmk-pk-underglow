@@ -332,11 +332,13 @@ int zmk_pk_underglow_on(void) {
     runtime_state.on = true;
     if (pk_underglow_effects[state.current_effects[active_profile_index]].is_layer_indicator) {
         runtime_state.layer_enabled = true;
+        zmk_pk_underglow_set_layer(pk_underglow_top_layer());
+    } else {
+        state.animation_step = 0;
+        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
     }
     
-    state.animation_step = 0;
     pk_ug_queue_push_power(PK_UG_TASK_POWER_ON, true);
-    k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     pk_ug_queue_push_sync(pk_underglow_top_layer());
 #endif
@@ -547,12 +549,7 @@ struct zmk_led_hsb zmk_pk_underglow_calc_sat(int direction) {
     struct zmk_led_hsb color = state.colors[active_profile_index];
 
     int s = color.s + (direction * CONFIG_ZMK_PK_UNDERGLOW_SAT_STEP);
-    if (s < 0) {
-        s = 0;
-    } else if (s > SAT_MAX) {
-        s = SAT_MAX;
-    }
-    color.s = s;
+    color.s = CLAMP(s, 0, SAT_MAX);
 
     return color;
 }
@@ -780,10 +777,6 @@ static int zmk_pk_underglow_endpoint_changed(const zmk_event_t *eh) {
 
         // Re-initialize the effect for the new profile (calls .select, updates layer_enabled, resets animation)
         zmk_pk_underglow_select_effect(state.current_effects[active_profile_index]);
-
-#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-        pk_ug_queue_push_sync(pk_underglow_top_layer());
-#endif
     }
     return ZMK_EV_EVENT_BUBBLE;
 }
