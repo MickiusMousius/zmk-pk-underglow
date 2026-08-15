@@ -59,6 +59,9 @@ int zmk_pk_underglow_get_state(bool *on_off) {
 
 
 int zmk_pk_underglow_on(void) {
+    // Catch silent endpoint desyncs that happen during a cold boot/deep sleep wake
+    pk_underglow_check_active_profile();
+
     runtime_state.on = true;
     if (pk_underglow_effects[state.current_effects[active_profile_index]].is_layer_indicator) {
         runtime_state.layer_enabled = true;

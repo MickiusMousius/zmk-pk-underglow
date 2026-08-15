@@ -116,6 +116,25 @@ static uint8_t get_active_profile(void) {
 #endif
 }
 
+/**
+ * Check and synchronize the active profile.
+ * 
+ * Why this is necessary: During a cold boot (or deep sleep wake), ZMK loads settings from NVS. 
+ * If our underglow settings are loaded before ZMK's endpoint settings, this subsystem will 
+ * ask for the active profile and receive `0` because ZMK hasn't loaded the real endpoint yet. 
+ * ZMK then silently loads the real endpoint (e.g. Profile 2) but does NOT fire a 
+ * `zmk_endpoint_changed` event during boot. This leaves the underglow stuck rendering Profile 0's 
+ * effect (often defaulting to White). This check runs when power is explicitly turned on to catch 
+ * that silent mismatch and force a sync to the correct profile before the LEDs light up.
+ */
+void pk_underglow_check_active_profile(void) {
+    uint8_t new_profile = get_active_profile();
+    if (active_profile_index != new_profile) {
+        active_profile_index = new_profile;
+        zmk_pk_underglow_select_effect(state.current_effects[active_profile_index]);
+    }
+}
+
 
 static bool is_powered = false;
 

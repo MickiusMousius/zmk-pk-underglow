@@ -113,6 +113,12 @@ struct led_rgb hsb_to_rgb(struct zmk_led_hsb hsb);
 int rgb_pixel_lookup(int idx);
 
 // Effect Specific API
+void pk_underglow_check_active_profile(void);
+void pk_ug_task_render_frame_execute(void);
+void pk_ug_task_sync_state_execute(uint8_t layer);
+void pk_ug_task_save_settings_execute(void);
+void pk_ug_task_power_on_execute(void);
+void pk_ug_task_power_off_execute(void);
 void zmk_pk_underglow_effect_ripple_trigger(uint8_t row, uint8_t col);
 void zmk_pk_underglow_effect_rainbow_ripple_trigger(uint8_t row, uint8_t col);
 void zmk_pk_underglow_effect_fireworks(void);
