@@ -8,6 +8,20 @@
  * - Safely toggling external power GPIOs and allowing for stabilization delays.
  * - Processing state saves to Non-Volatile Storage (NVS).
  * - De-duplicating and prioritizing queue tasks to prevent blocking the main ZMK thread.
+ *
+ * Queue Task Deduplication Behaviors:
+ * 1. RENDER_FRAME: Automatically pushed by a high-frequency timer (e.g. 20 FPS). Deduplication 
+ *    drops any older frame render tasks in the queue. If the queue falls behind, it skips 
+ *    rendering stale frames to catch up.
+ * 2. POWER_ON / POWER_OFF: Hardware toggles involving GPIO pins and stabilization delays.
+ *    These logically invalidate each other: if you push a POWER_OFF, the queue deletes any 
+ *    pending POWER_ON tasks (and vice versa) to prevent erratic hardware flickering. A POWER_OFF 
+ *    command also drops all pending RENDER_FRAME tasks since the LEDs will be unpowered anyway.
+ * 3. SYNC_STATE: Broadcasts state over Bluetooth to the peripheral. Deduplication ensures that 
+ *    if multiple rapid changes occur, only the most recent state snapshot is queued for 
+ *    transmission, discarding intermediate broadcasts.
+ * 4. SAVE_SETTINGS: Commits state to NVS flash. Deduplication ensures that even if multiple 
+ *    save requests bypass the debounce timer, only one expensive flash write is executed.
  */
 
 #include <zephyr/kernel.h>

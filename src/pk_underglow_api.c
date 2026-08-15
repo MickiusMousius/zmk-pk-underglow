@@ -8,6 +8,14 @@
  * - Change the active effect, hue, saturation, and brightness.
  * - Manage transient layer indicator effects.
  * - Defer operations that require state saves to the background.
+ *
+ * Persistent State (NVS Flash Writes):
+ * To prevent degrading the flash memory with excessive writes during rapid visual 
+ * adjustments (e.g. holding down a hue cycle button), this API schedules a delayed 
+ * Zephyr work item. This delay explicitly respects the global ZMK settings debounce 
+ * configuration (CONFIG_ZMK_SETTINGS_SAVE_DEBOUNCE). Each repeated call reschedules 
+ * the timer (debounces). Only after the timer expires is a SAVE_SETTINGS task pushed 
+ * to the background queue to execute the actual flash write.
  */
 
 #include <zephyr/kernel.h>

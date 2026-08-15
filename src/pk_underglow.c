@@ -14,6 +14,19 @@
  * - Reacting to global ZMK events (e.g. position state changed, battery updates, layer changes).
  * - Managing the primary background animation tick loop.
  * - Processing split central-peripheral sync payloads and broadcasting state.
+ *
+ * Core Behavioral Mechanics:
+ * 1. Power State: The hardware power state (`runtime_state.on`) is completely ephemeral and 
+ *    is intentionally isolated from the flash-persisted `state` struct. This prevents the 
+ *    keyboard from unexpectedly booting up with LEDs on if it was previously left on before a 
+ *    deep sleep or reset. Power-on always requires an explicit user or runtime action.
+ * 2. NVS Boot Load: Flash memory is read exactly once during the boot process. ZMK fires a 
+ *    `settings_load()` sweep which unpacks the persistent state (effect IDs, colors, speeds) 
+ *    directly into the `state` RAM struct via the `rgb_settings_set` callback.
+ * 3. Bluetooth Sync: The central pushes a 64-bit dense payload containing all current visual 
+ *    and power states to the peripheral whenever settings change or layers shift. The peripheral 
+ *    unpacks this in `zmk_pk_underglow_sync_state` to perfectly mirror the central, ensuring 
+ *    intermediate steps are deduplicated out.
  */
 
 #include <zephyr/device.h>
