@@ -11,6 +11,13 @@
 #pragma once
 
 #include <zephyr/device.h>
+#include <zephyr/kernel.h>
+#include <zephyr/sys/util.h>
+
+#if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
+#define HAS_NVS_SETTINGS 1
+#endif
+
 #include <zephyr/drivers/led_strip.h>
 #include <zmk/behavior.h>
 #include <zmk/endpoints.h>
@@ -102,7 +109,7 @@ extern int center_col;
 extern const struct device *led_strip;
 extern struct k_timer underglow_tick;
 
-#if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
+#if defined(HAS_NVS_SETTINGS)
 extern struct k_work_delayable underglow_save_work;
 #endif
 

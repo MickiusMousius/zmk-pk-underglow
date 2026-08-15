@@ -22,6 +22,7 @@
 #include <zephyr/settings/settings.h>
 #include <zmk/pk_underglow/boot_manager.h>
 #include <zmk/pk_underglow/public_api.h>
+#include "pk_underglow_internal.h"
 
 LOG_MODULE_DECLARE(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);
 
@@ -31,7 +32,7 @@ static bool boot_power_on = false; // Loaded from NVS, defaults to false
 bool zmk_pk_underglow_is_stabilized(void) { return is_stabilized; }
 
 
-#if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
+#if defined(HAS_NVS_SETTINGS)
 static void evaluate_boot_power_state(void) {
     LOG_INF("Evaluating boot power state: %s", boot_power_on ? "ON" : "OFF");
     if (boot_power_on) {
@@ -55,7 +56,7 @@ void zmk_pk_underglow_signal_peripheral_sync(void) {
 
 #endif
 
-#if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
+#if defined(HAS_NVS_SETTINGS)
 void zmk_pk_underglow_signal_central_nvs_loaded(void) {
     if (!is_stabilized) {
         LOG_DBG("Central stabilized via NVS load completion.");
@@ -71,7 +72,7 @@ static void stabilization_fallback_work_handler(struct k_work *work) {
     if (!is_stabilized) {
         LOG_DBG("System stabilized via uptime fallback timer (%d ms).", CONFIG_ZMK_PK_UNDERGLOW_STABILIZATION_TIMEOUT);
         is_stabilized = true;
-#if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
+#if defined(HAS_NVS_SETTINGS)
         evaluate_boot_power_state();
 #endif
     }

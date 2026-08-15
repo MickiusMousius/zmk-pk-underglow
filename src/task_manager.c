@@ -71,7 +71,10 @@ void pk_ug_queue_push_power(pk_ug_task_type_t type) {
 
     // Deduplication and Invalidation
     if (type == PK_UG_TASK_POWER_OFF) {
-        // Power off invalidates all pending actions except saving settings and sync state
+        // RACE CONDITION PREVENTION:
+        // A POWER_OFF event immediately invalidates any pending visual updates (RENDER_FRAME, POWER_ON).
+        // If we didn't drop them, the LEDs could temporarily flash on before shutting down.
+        // We preserve SAVE_SETTINGS and SYNC_STATE because state must still be persisted/broadcast.
         int new_head = 0;
         for (int i = 0; i < queue_head; i++) {
             if (task_queue[i].type == PK_UG_TASK_SAVE_SETTINGS || task_queue[i].type == PK_UG_TASK_SYNC_STATE) {
@@ -80,15 +83,18 @@ void pk_ug_queue_push_power(pk_ug_task_type_t type) {
         }
         queue_head = new_head;
     } else {
-        // For other types, deduplicate by removing existing instances of the same type,
-        // ensuring the new one is placed at the tail.
+        // Deduplicate existing tasks of the same type by removing them from the queue,
+        // which guarantees our new push goes to the tail of the queue.
         // CRITICAL NOTE: By placing the new POWER_ON at the tail, any tasks already in
         // the queue (like RENDER_FRAME) will execute *before* this new POWER_ON.
         // Therefore, API functions must push POWER_ON *before* pushing RENDER_FRAME.
         int new_head = 0;
         for (int i = 0; i < queue_head; i++) {
             if (task_queue[i].type != type) {
-                // If it's a POWER_ON, it invalidates POWER_OFF
+                // RACE CONDITION PREVENTION:
+                // If we are pushing a POWER_ON, we must obliterate any pending POWER_OFF tasks.
+                // Otherwise, a rapid on->off->on sequence could result in power shutting off
+                // right after we turn it on.
                 if (type == PK_UG_TASK_POWER_ON && task_queue[i].type == PK_UG_TASK_POWER_OFF) {
                     continue;
                 }

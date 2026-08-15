@@ -210,7 +210,7 @@ static void zmk_pk_underglow_tick_handler(struct k_timer *timer) {
 
 K_TIMER_DEFINE(underglow_tick, zmk_pk_underglow_tick_handler, NULL);
 
-#if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
+#if defined(HAS_NVS_SETTINGS)
 static int rgb_settings_set(const char *name, size_t len, settings_read_cb read_cb, void *cb_arg) {
     const char *next;
     int rc;
@@ -247,7 +247,7 @@ static int rgb_settings_commit(void) {
 }
 
 
-SETTINGS_STATIC_HANDLER_DEFINE(pk_underglow, "rgb/underglow", NULL, rgb_settings_set, NULL, NULL);
+SETTINGS_STATIC_HANDLER_DEFINE(pk_underglow, "rgb/underglow", NULL, rgb_settings_set, rgb_settings_commit, NULL);
 
 static void zmk_pk_underglow_save_state_work(struct k_work *_work) { pk_ug_queue_push(PK_UG_TASK_SAVE_SETTINGS); }
 
@@ -352,7 +352,7 @@ static int zmk_pk_underglow_init(void) {
     }
     runtime_state.layer_enabled = pk_underglow_effects[state.current_effects[active_profile_index]].is_layer_indicator;
 
-#if IS_ENABLED(CONFIG_SETTINGS) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
+#if defined(HAS_NVS_SETTINGS)
     k_work_init_delayable(&underglow_save_work, zmk_pk_underglow_save_state_work);
 #endif
 
@@ -511,7 +511,7 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
     if (as_zmk_activity_state_changed(eh)) {
         enum zmk_activity_state activity_state = zmk_activity_get_state();
         if (activity_state == ZMK_ACTIVITY_SLEEP) {
-            zmk_pk_underglow_off();
+            zmk_pk_underglow_transient_off();
         }
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
         else if (activity_state == ZMK_ACTIVITY_IDLE) {
