@@ -518,7 +518,11 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
             zmk_pk_underglow_transient_off();
         } else if (activity_state == ZMK_ACTIVITY_ACTIVE) {
             if (runtime_state.on) {
-                zmk_pk_underglow_transient_on();
+                if (runtime_state.layer_enabled) {
+                    zmk_pk_underglow_set_layer(pk_underglow_top_layer());
+                } else {
+                    zmk_pk_underglow_transient_on();
+                }
             }
         }
 #endif

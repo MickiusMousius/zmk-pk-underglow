@@ -204,7 +204,7 @@ void zmk_pk_underglow_set_layer(uint8_t layer) {
         //  < 0 : Fallback to `animated`. If true, runs the timer continuously.
         if (fade_delay > 0) {
             k_timer_start(&underglow_tick, K_SECONDS(fade_delay), K_MSEC(PK_UG_FRAME_DURATION));
-        } else if (animated || fade_delay == 0) {
+        } else if (animated) {
             k_timer_start(&underglow_tick, K_MSEC(PK_UG_FRAME_DURATION), K_MSEC(PK_UG_FRAME_DURATION));
         }
 
