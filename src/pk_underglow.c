@@ -4,6 +4,18 @@
  * SPDX-License-Identifier: MIT
  */
 
+/**
+ * @file pk_underglow.c
+ * @brief Core state management and event system for the ZMK pk_underglow module.
+ *
+ * This file is the beating heart of the underglow subsystem. It is responsible for:
+ * - Bootstrapping and initializing the underglow hardware and variables.
+ * - Managing the persistent underglow state (e.g. current effect, colors, speeds).
+ * - Reacting to global ZMK events (e.g. position state changed, battery updates, layer changes).
+ * - Managing the primary background animation tick loop.
+ * - Processing split central-peripheral sync payloads and broadcasting state.
+ */
+
 #include <zephyr/device.h>
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>

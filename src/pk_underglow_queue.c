@@ -1,3 +1,15 @@
+/**
+ * @file pk_underglow_queue.c
+ * @brief Background work queue for the ZMK pk_underglow module.
+ *
+ * This file is responsible for managing a dedicated background Zephyr thread 
+ * that handles non-blocking execution of expensive operations, such as:
+ * - Pushing rendering frames out to the LED strip.
+ * - Safely toggling external power GPIOs and allowing for stabilization delays.
+ * - Processing state saves to Non-Volatile Storage (NVS).
+ * - De-duplicating and prioritizing queue tasks to prevent blocking the main ZMK thread.
+ */
+
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zmk/pk_underglow_queue.h>

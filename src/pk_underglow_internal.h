@@ -1,3 +1,13 @@
+/**
+ * @file pk_underglow_internal.h
+ * @brief Internal headers and global variable sharing for the ZMK pk_underglow module.
+ *
+ * This file is responsible for exposing internal state, timer loops, and Zephyr queue objects
+ * across the different C files that make up the pk_underglow subsystem.
+ * It prevents circular dependencies and encapsulates internal functions that should not be 
+ * directly exposed to the broader ZMK application layer.
+ */
+
 #pragma once
 
 #include <zephyr/device.h>

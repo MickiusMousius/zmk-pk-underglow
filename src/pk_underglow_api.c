@@ -1,3 +1,15 @@
+/**
+ * @file pk_underglow_api.c
+ * @brief Public API and state mutators for the ZMK pk_underglow module.
+ *
+ * This file is responsible for housing the high-level API routines that are 
+ * invoked by ZMK keymap behaviors. It includes functions to:
+ * - Toggle power on and off.
+ * - Change the active effect, hue, saturation, and brightness.
+ * - Manage transient layer indicator effects.
+ * - Defer operations that require state saves to the background.
+ */
+
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
