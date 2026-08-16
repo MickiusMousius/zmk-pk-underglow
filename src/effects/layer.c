@@ -155,6 +155,7 @@ bool zmk_rgbmap_is_ble_pairing(uint8_t layer) {
     return id == -1 ? false : zmk_rgbmap_pairing[id];
 }
 
+
 const struct zmk_behavior_binding *pk_underglow_get_bindings(uint8_t layer) {
     int rgblayer = zmk_rgbmap_id(layer);
     if (rgblayer == -1) {

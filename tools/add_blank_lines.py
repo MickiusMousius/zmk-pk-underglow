@@ -12,11 +12,12 @@ def process_file(filepath):
     with open(filepath, 'w') as f:
         f.write(content)
 
-# We want to process src and include directories
+# We want to process src and include directories, relative to module root
+module_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 base_dirs = ['src', 'include']
 
 for bdir in base_dirs:
-    full_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), bdir)
+    full_dir = os.path.join(module_dir, bdir)
     if os.path.exists(full_dir):
         for root, _, files in os.walk(full_dir):
             for file in files:

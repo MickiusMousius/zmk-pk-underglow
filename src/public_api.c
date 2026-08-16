@@ -188,7 +188,7 @@ int zmk_pk_underglow_toggle(void) { return runtime_state.on ? zmk_pk_underglow_o
 void zmk_pk_underglow_set_layer(uint8_t layer) {
     LOG_INF("Setting pk underglow layer: %d. layer_enabled: %d, state.on: %d", layer, runtime_state.layer_enabled,
             runtime_state.on);
-    
+
     bool is_ble_pairing = zmk_rgbmap_is_ble_pairing(layer);
 
     if (!runtime_state.layer_enabled && !runtime_state.on && !is_ble_pairing) {
@@ -202,11 +202,11 @@ void zmk_pk_underglow_set_layer(uint8_t layer) {
     if (!is_ble_pairing && runtime_state.on && !runtime_state.layer_enabled) {
         if (runtime_state.ble_pairing_override) {
             runtime_state.ble_pairing_override = false;
-            zmk_pk_underglow_transient_on(); 
+            zmk_pk_underglow_transient_on();
         }
         return;
     }
-    
+
     if (is_ble_pairing) {
         runtime_state.ble_pairing_override = true;
     } else {
@@ -214,7 +214,7 @@ void zmk_pk_underglow_set_layer(uint8_t layer) {
     }
 
     const struct zmk_behavior_binding *rgbmap = pk_underglow_get_bindings(layer);
-    
+
     bool has_pixels = false;
     if (rgbmap != NULL) {
         has_pixels = zmk_pk_underglow_apply_rgbmap(rgbmap, ZMK_KEYMAP_LEN, layer) > 0;

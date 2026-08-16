@@ -209,7 +209,8 @@ void pk_ug_task_render_frame_execute(void) {
 
 
 static void zmk_pk_underglow_tick_handler(struct k_timer *timer) {
-    if (!runtime_state.on && !runtime_state.layer_enabled && !runtime_state.ble_pairing_override && !runtime_state.fireworks_override) {
+    if (!runtime_state.on && !runtime_state.layer_enabled && !runtime_state.ble_pairing_override &&
+        !runtime_state.fireworks_override) {
         return;
     }
     pk_ug_queue_push(PK_UG_TASK_RENDER_FRAME);
@@ -707,7 +708,7 @@ static int pk_underglow_fireworks_listener(const zmk_event_t *eh) {
         } else {
             pk_ug_queue_push_sync(pk_underglow_top_layer());
         }
-        
+
         k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
     }
     return ZMK_EV_EVENT_BUBBLE;

@@ -8,8 +8,8 @@
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
 #include <zmk/event_manager.h>
-#include <zmk/events/ble_passkey_state_changed.h>
 #include <zmk/events/ble_passkey_digits_changed.h>
+#include <zmk/events/ble_passkey_state_changed.h>
 #include <zmk/events/pk_underglow_color_changed.h>
 #include <zmk/pk_underglow/public_api.h>
 
@@ -33,6 +33,7 @@ static int underglow_ug_pairing_listener(const zmk_event_t *eh) {
     return ZMK_EV_EVENT_BUBBLE;
 }
 
+
 ZMK_LISTENER(behavior_pk_underglow_ug_pairing, underglow_ug_pairing_listener);
 ZMK_SUBSCRIPTION(behavior_pk_underglow_ug_pairing, ble_passkey_state_changed);
 
@@ -42,6 +43,7 @@ static int underglow_ug_passkey_digits_listener(const zmk_event_t *eh) {
     raise_zmk_pk_underglow_color_changed((struct zmk_pk_underglow_color_changed){.layers = 0xFFFFFFFF, .wakeup = true});
     return ZMK_EV_EVENT_BUBBLE;
 }
+
 
 ZMK_LISTENER(behavior_pk_underglow_ug_passkey_digits, underglow_ug_passkey_digits_listener);
 ZMK_SUBSCRIPTION(behavior_pk_underglow_ug_passkey_digits, ble_passkey_digits_changed);
@@ -56,7 +58,8 @@ ZMK_SUBSCRIPTION(behavior_pk_underglow_ug_passkey_digits, ble_passkey_digits_cha
 
 static int underglow_ug_pairing_digit_init(const struct device *dev) { return 0; };
 
-static int underglow_ug_pairing_digit_process(struct zmk_behavior_binding *binding, struct zmk_behavior_binding_event event) {
+static int underglow_ug_pairing_digit_process(struct zmk_behavior_binding *binding,
+                                              struct zmk_behavior_binding_event event) {
     if (!pairing_active || passkey_len >= 6) {
         return 0x000000;
     }
@@ -84,6 +87,7 @@ static int underglow_ug_pairing_digit_process(struct zmk_behavior_binding *bindi
     return (r << 16) | (g << 8) | b;
 }
 
+
 static const struct behavior_driver_api underglow_ug_pairing_digit_driver_api = {
     .binding_pressed = underglow_ug_pairing_digit_process,
     .locality = BEHAVIOR_LOCALITY_GLOBAL,
@@ -91,6 +95,7 @@ static const struct behavior_driver_api underglow_ug_pairing_digit_driver_api = 
     .get_parameter_metadata = zmk_behavior_get_empty_param_metadata,
 #endif
 };
+
 
 #define KP_INST_DIGIT(n)                                                                                               \
     BEHAVIOR_DT_INST_DEFINE(n, underglow_ug_pairing_digit_init, NULL, NULL, NULL, POST_KERNEL,                         \
@@ -108,7 +113,8 @@ DT_INST_FOREACH_STATUS_OKAY(KP_INST_DIGIT)
 
 static int underglow_ug_pairing_enter_init(const struct device *dev) { return 0; };
 
-static int underglow_ug_pairing_enter_process(struct zmk_behavior_binding *binding, struct zmk_behavior_binding_event event) {
+static int underglow_ug_pairing_enter_process(struct zmk_behavior_binding *binding,
+                                              struct zmk_behavior_binding_event event) {
     if (!pairing_active || passkey_len < 6) {
         return 0x000000;
     }
@@ -124,6 +130,7 @@ static int underglow_ug_pairing_enter_process(struct zmk_behavior_binding *bindi
     }
 }
 
+
 static const struct behavior_driver_api underglow_ug_pairing_enter_driver_api = {
     .binding_pressed = underglow_ug_pairing_enter_process,
     .locality = BEHAVIOR_LOCALITY_GLOBAL,
@@ -131,6 +138,7 @@ static const struct behavior_driver_api underglow_ug_pairing_enter_driver_api = 
     .get_parameter_metadata = zmk_behavior_get_empty_param_metadata,
 #endif
 };
+
 
 #define KP_INST_ENTER(n)                                                                                               \
     BEHAVIOR_DT_INST_DEFINE(n, underglow_ug_pairing_enter_init, NULL, NULL, NULL, POST_KERNEL,                         \
