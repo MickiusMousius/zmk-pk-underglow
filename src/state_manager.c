@@ -188,7 +188,9 @@ void pk_ug_task_render_frame_execute(void) {
     if (!fireworks_active) {
 #endif
 
-        if (pk_underglow_effects[state.current_effects[active_profile_index]].render) {
+        if (runtime_state.ble_pairing_override) {
+            zmk_pk_underglow_effect_layer();
+        } else if (pk_underglow_effects[state.current_effects[active_profile_index]].render) {
             pk_underglow_effects[state.current_effects[active_profile_index]].render();
         }
 
@@ -204,7 +206,7 @@ void pk_ug_task_render_frame_execute(void) {
 
 
 static void zmk_pk_underglow_tick_handler(struct k_timer *timer) {
-    if (!runtime_state.on && !runtime_state.layer_enabled) {
+    if (!runtime_state.on && !runtime_state.layer_enabled && !runtime_state.ble_pairing_override) {
         return;
     }
     pk_ug_queue_push(PK_UG_TASK_RENDER_FRAME);
@@ -666,9 +668,7 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
         if (!is_powered || effect_changed) {
             zmk_pk_underglow_transient_on();
         }
-        if (runtime_state.layer_enabled) {
-            zmk_pk_underglow_set_peripheral_layer(layer);
-        }
+        zmk_pk_underglow_set_peripheral_layer(layer);
     } else {
         zmk_pk_underglow_transient_off();
     }

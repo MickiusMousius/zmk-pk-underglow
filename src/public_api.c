@@ -188,8 +188,30 @@ int zmk_pk_underglow_toggle(void) { return runtime_state.on ? zmk_pk_underglow_o
 void zmk_pk_underglow_set_layer(uint8_t layer) {
     LOG_INF("Setting pk underglow layer: %d. layer_enabled: %d, state.on: %d", layer, runtime_state.layer_enabled,
             runtime_state.on);
-    if (!runtime_state.layer_enabled || !runtime_state.on)
+    
+    bool is_ble_pairing = zmk_rgbmap_is_ble_pairing(layer);
+
+    if (!runtime_state.layer_enabled && !runtime_state.on && !is_ble_pairing) {
+        if (runtime_state.ble_pairing_override) {
+            runtime_state.ble_pairing_override = false;
+            zmk_pk_underglow_transient_off();
+        }
         return;
+    }
+
+    if (!is_ble_pairing && runtime_state.on && !runtime_state.layer_enabled) {
+        if (runtime_state.ble_pairing_override) {
+            runtime_state.ble_pairing_override = false;
+            zmk_pk_underglow_transient_on(); 
+        }
+        return;
+    }
+    
+    if (is_ble_pairing) {
+        runtime_state.ble_pairing_override = true;
+    } else {
+        runtime_state.ble_pairing_override = false;
+    }
 
     const struct zmk_behavior_binding *rgbmap = pk_underglow_get_bindings(layer);
     
@@ -201,7 +223,7 @@ void zmk_pk_underglow_set_layer(uint8_t layer) {
     bool animated = zmk_rgbmap_is_animated(layer);
     int fade_delay = zmk_rgbmap_fade_delay(layer);
 
-    if (has_pixels || animated) {
+    if (has_pixels || animated || is_ble_pairing) {
         if (!zmk_pk_underglow_is_on() || transient_off_pending) {
             transient_off_pending = false;
             zmk_pk_underglow_transient_on();
@@ -210,13 +232,11 @@ void zmk_pk_underglow_set_layer(uint8_t layer) {
         k_timer_stop(&underglow_tick);
         state.animation_step = 0;
 
-        // fade_delay logic:
-        //  > 0 : Static layer with a timeout (e.g. show for 2 seconds then turn off)
-        // == 0 : Static layer that stays on forever (e.g. caps lock indicator)
-        //  < 0 : Fallback to `animated`. If true, runs the timer continuously.
         if (fade_delay > 0) {
             k_timer_start(&underglow_tick, K_SECONDS(fade_delay), K_MSEC(PK_UG_FRAME_DURATION));
         } else if (animated) {
+            k_timer_start(&underglow_tick, K_MSEC(PK_UG_FRAME_DURATION), K_MSEC(PK_UG_FRAME_DURATION));
+        } else if (is_ble_pairing) {
             k_timer_start(&underglow_tick, K_MSEC(PK_UG_FRAME_DURATION), K_MSEC(PK_UG_FRAME_DURATION));
         }
 

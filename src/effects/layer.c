@@ -20,7 +20,11 @@ LOG_MODULE_DECLARE(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);
 
 static struct led_rgb hex_to_rgb(uint8_t r, uint8_t g, uint8_t b) {
     struct zmk_led_hsb hsb = state.colors[active_profile_index];
-    return (struct led_rgb){.r = (hsb.b * r) / 0xff, .g = (hsb.b * g) / 0xff, .b = (hsb.b * b) / 0xff};
+    uint8_t brt = hsb.b;
+    if (runtime_state.ble_pairing_override && brt < 179) {
+        brt = 179;
+    }
+    return (struct led_rgb){.r = (brt * r) / 0xff, .g = (brt * g) / 0xff, .b = (brt * b) / 0xff};
 }
 
 
@@ -119,12 +123,14 @@ const int pixel_lookup_table[] = DT_INST_PROP(0, pixel_lookup);
 #define LAYER_IDS_PTR(node) (const int[]) DT_PROP(node, layer_id)
 #define LAYER_IDS_LEN_MACRO(node) DT_PROP_LEN(node, layer_id)
 #define LAYER_ANIMATED(node) DT_PROP(node, animated)
+#define LAYER_BLE_PAIRING(node) DT_PROP(node, ble_pairing_layer)
 
 static const int *zmk_rgbmap_ids[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, LAYER_IDS_PTR, (, ))};
 static const size_t zmk_rgbmap_ids_lens[ZMK_RGBMAP_LAYERS_LEN] = {
     DT_INST_FOREACH_CHILD_SEP(0, LAYER_IDS_LEN_MACRO, (, ))};
 static int zmk_rgbmap_fds[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, FADE_DELAY, (, ))};
 static bool zmk_rgbmap_anis[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, LAYER_ANIMATED, (, ))};
+static bool zmk_rgbmap_pairing[ZMK_RGBMAP_LAYERS_LEN] = {DT_INST_FOREACH_CHILD_SEP(0, LAYER_BLE_PAIRING, (, ))};
 
 int rgb_pixel_lookup(int idx) { return pixel_lookup_table[idx]; };
 
@@ -143,6 +149,11 @@ int zmk_rgbmap_id(uint8_t layer) {
 int zmk_rgbmap_fade_delay(uint8_t layer) { return zmk_rgbmap_fds[zmk_rgbmap_id(layer)]; }
 
 bool zmk_rgbmap_is_animated(uint8_t layer) { return zmk_rgbmap_anis[zmk_rgbmap_id(layer)]; }
+
+bool zmk_rgbmap_is_ble_pairing(uint8_t layer) {
+    int id = zmk_rgbmap_id(layer);
+    return id == -1 ? false : zmk_rgbmap_pairing[id];
+}
 
 const struct zmk_behavior_binding *pk_underglow_get_bindings(uint8_t layer) {
     int rgblayer = zmk_rgbmap_id(layer);

@@ -69,6 +69,9 @@ child-binding:
     animated:
       type: boolean
       required: false
+    ble-pairing-layer:
+      type: boolean
+      required: false
     fade-delay:
       type: int
       required: false

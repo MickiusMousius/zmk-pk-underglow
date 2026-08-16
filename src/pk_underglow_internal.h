@@ -94,6 +94,7 @@ struct pk_underglow_state {
 struct pk_underglow_runtime_state {
     bool on;
     bool layer_enabled;
+    bool ble_pairing_override;
 };
 
 
@@ -129,3 +130,4 @@ void pk_ug_task_power_off_execute(void);
 void zmk_pk_underglow_effect_ripple_trigger(uint8_t row, uint8_t col);
 void zmk_pk_underglow_effect_rainbow_ripple_trigger(uint8_t row, uint8_t col);
 void zmk_pk_underglow_effect_fireworks(void);
+void zmk_pk_underglow_effect_layer(void);
