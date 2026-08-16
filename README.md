@@ -244,6 +244,18 @@ Add a reference to `&pk_underglow` in your `.keymap` file. Inside this node, def
             &ug BLACK    &ug GREEN    &ug GREEN    &ug RED
         >;
     };
+
+    layer_ble_pairing {
+        layer-id = <6>;
+        animated;
+        ble-pairing-layer; // Marks this as the dedicated pairing indicator layer
+        bindings = <
+            // Uses the special pairing behaviors to pulse while typing, and blink enter when done
+            &ug_pairing_digit 0xFFFFFF 1  &ug_pairing_digit 0xFFFFFF 1  &ug_pairing_digit 0xFFFFFF 1  &ug_pairing_digit 0xFFFFFF 1
+            &ug_pairing_digit 0xFFFFFF 1  &ug BLACK                     &ug BLACK                     &ug_pairing_enter 0x00FF00
+            &ug_pairing_digit 0xFFFFFF 1  &ug_pairing_digit 0xFFFFFF 1  &ug_pairing_digit 0xFFFFFF 1  &ug BLACK
+        >;
+    };
 };
 ```
 
@@ -272,6 +284,17 @@ Dynamically indicates the status of the physical USB connection.
 - **Pulsing Teal (#14B8A6):** USB is connected *and* is the active output.
 - **Solid Teal:** USB is connected in the background, but is *not* the active output (e.g., you are typing over Bluetooth while charging).
 - **Black/Off:** USB is disconnected.
+
+### `&ug_pairing_digit 0xRRGGBB PULSE` (Passkey Digit Indicator)
+Dynamically indicates the typed digits during a BLE passkey pairing process. Designed to be used alongside the `ble-pairing-layer` property.
+- Only visible while actively typing a passkey (0-5 digits typed). Turns off when 6 digits are typed.
+- **`0xRRGGBB`**: The hex color to use.
+- **`PULSE`**: `1` to pulse the color, `0` for solid.
+
+### `&ug_pairing_enter 0xRRGGBB` (Passkey Enter Indicator)
+Dynamically indicates when all 6 digits of a passkey have been entered and the keyboard is waiting for you to press the Enter key.
+- Black/Off while typing the first 0-5 digits.
+- **Fast Blinks** the specified color when 6 digits have been typed.
 
 > **Note:** For layers utilizing dynamic pulsing effects like `&eff_bt` or `&eff_usb`, make sure to include the `animated;` property in the layer definition (as seen in `layer_settings` above).
 
