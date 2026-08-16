@@ -177,6 +177,9 @@ void pk_ug_task_render_frame_execute(void) {
     if (fireworks_active) {
         if (k_uptime_get_32() - fireworks_start_time >= CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS_DURATION) {
             fireworks_active = false;
+            if (runtime_state.layer_enabled) {
+                zmk_pk_underglow_set_layer(pk_underglow_top_layer());
+            }
         } else {
             zmk_pk_underglow_effect_fireworks();
         }
@@ -689,6 +692,8 @@ static int pk_underglow_fireworks_listener(const zmk_event_t *eh) {
         if (!runtime_state.on) {
             zmk_pk_underglow_on();
         }
+        
+        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
     }
     return ZMK_EV_EVENT_BUBBLE;
 }
