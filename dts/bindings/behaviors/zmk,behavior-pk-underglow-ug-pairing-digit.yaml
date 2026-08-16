@@ -1,0 +1,5 @@
+description: "PK Underglow Pairing Digit Indicator"
+
+compatible: "zmk,behavior-pk-underglow-ug-pairing-digit"
+
+include: two_param.yaml

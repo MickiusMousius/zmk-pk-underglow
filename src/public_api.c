@@ -37,6 +37,8 @@ LOG_MODULE_DECLARE(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);
  * PUBLIC API & STATE MUTATORS
  * ========================================================================== */
 
+static bool transient_off_pending = false;
+
 int zmk_pk_underglow_save_state(void) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     pk_ug_queue_push_sync(pk_underglow_top_layer());
@@ -94,6 +96,7 @@ int zmk_pk_underglow_transient_on(void) {
         return -ENODEV;
 
     state.animation_step = 0;
+    transient_off_pending = false;
 
     pk_ug_queue_push_power(PK_UG_TASK_POWER_ON);
     k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
@@ -127,6 +130,7 @@ int zmk_pk_underglow_transient_off(void) {
     if (!zmk_pk_underglow_is_on())
         return 0;
 
+    transient_off_pending = true;
     pk_ug_queue_push_power(PK_UG_TASK_POWER_OFF);
     k_timer_stop(&underglow_tick);
 
@@ -188,15 +192,23 @@ void zmk_pk_underglow_set_layer(uint8_t layer) {
         return;
 
     const struct zmk_behavior_binding *rgbmap = pk_underglow_get_bindings(layer);
-    if (rgbmap != NULL && zmk_pk_underglow_apply_rgbmap(rgbmap, ZMK_KEYMAP_LEN, layer)) {
-        if (!zmk_pk_underglow_is_on()) {
+    
+    bool has_pixels = false;
+    if (rgbmap != NULL) {
+        has_pixels = zmk_pk_underglow_apply_rgbmap(rgbmap, ZMK_KEYMAP_LEN, layer) > 0;
+    }
+
+    bool animated = zmk_rgbmap_is_animated(layer);
+    int fade_delay = zmk_rgbmap_fade_delay(layer);
+
+    if (has_pixels || animated) {
+        if (!zmk_pk_underglow_is_on() || transient_off_pending) {
+            transient_off_pending = false;
             zmk_pk_underglow_transient_on();
         }
 
         k_timer_stop(&underglow_tick);
         state.animation_step = 0;
-        int fade_delay = zmk_rgbmap_fade_delay(layer);
-        bool animated = zmk_rgbmap_is_animated(layer);
 
         // fade_delay logic:
         //  > 0 : Static layer with a timeout (e.g. show for 2 seconds then turn off)

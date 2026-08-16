@@ -54,10 +54,16 @@
             display-name = "Underglow Layer Sync";
         };
 
-        ug_pairing: ugpairing {
-            compatible = "zmk,behavior-pk-underglow-ug-pairing";
+        ug_pairing_digit: ugpairingdigit {
+            compatible = "zmk,behavior-pk-underglow-ug-pairing-digit";
             #binding-cells = <2>;
-            display-name = "Underglow Pairing Mode";
+            display-name = "Underglow Pairing Digit Guide";
+        };
+
+        ug_pairing_enter: ugpairingenter {
+            compatible = "zmk,behavior-pk-underglow-ug-pairing-enter";
+            #binding-cells = <2>;
+            display-name = "Underglow Pairing Enter Guide";
         };
     };
 };

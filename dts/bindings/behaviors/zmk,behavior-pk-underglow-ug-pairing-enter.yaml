@@ -1,0 +1,5 @@
+description: "PK Underglow Pairing Enter Indicator"
+
+compatible: "zmk,behavior-pk-underglow-ug-pairing-enter"
+
+include: two_param.yaml
