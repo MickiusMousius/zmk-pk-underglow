@@ -90,9 +90,12 @@ void zmk_pk_underglow_effect_fireworks(void) {
 
                 uint8_t b = (uint8_t)((100 * intensity * fade) / 10000);
 
+                uint8_t peak_brt = MAX(CONFIG_ZMK_PK_UNDERGLOW_BRT_MAX, 70);
+                b = (uint8_t)((b * peak_brt) / 100);
+
                 struct zmk_led_hsb hsb = {.h = fireworks[i].hue, .s = 100, .b = b};
 
-                struct led_rgb rgb = hsb_to_rgb(hsb_scale_min_max(hsb));
+                struct led_rgb rgb = hsb_to_rgb(hsb);
 
                 pixels[p].r = MIN(255, pixels[p].r + rgb.r);
                 pixels[p].g = MIN(255, pixels[p].g + rgb.g);
