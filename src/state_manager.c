@@ -172,20 +172,23 @@ static const struct gpio_dt_spec power_gpio = {0};
 
 void pk_ug_task_render_frame_execute(void) {
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS)
-    extern bool fireworks_active;
     extern uint32_t fireworks_start_time;
-    if (fireworks_active) {
+    if (runtime_state.fireworks_override) {
         if (k_uptime_get_32() - fireworks_start_time >= CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS_DURATION) {
-            fireworks_active = false;
-            if (runtime_state.layer_enabled) {
+            runtime_state.fireworks_override = false;
+            if (!runtime_state.on && !runtime_state.ble_pairing_override) {
+                zmk_pk_underglow_transient_off();
+            } else if (runtime_state.layer_enabled || runtime_state.ble_pairing_override) {
                 zmk_pk_underglow_set_layer(pk_underglow_top_layer());
+            } else {
+                zmk_pk_underglow_transient_on();
             }
         } else {
             zmk_pk_underglow_effect_fireworks();
         }
     }
 
-    if (!fireworks_active) {
+    if (!runtime_state.fireworks_override) {
 #endif
 
         if (runtime_state.ble_pairing_override) {
@@ -206,7 +209,7 @@ void pk_ug_task_render_frame_execute(void) {
 
 
 static void zmk_pk_underglow_tick_handler(struct k_timer *timer) {
-    if (!runtime_state.on && !runtime_state.layer_enabled && !runtime_state.ble_pairing_override) {
+    if (!runtime_state.on && !runtime_state.layer_enabled && !runtime_state.ble_pairing_override && !runtime_state.fireworks_override) {
         return;
     }
     pk_ug_queue_push(PK_UG_TASK_RENDER_FRAME);
@@ -449,7 +452,8 @@ void pk_ug_task_sync_state_execute(uint8_t layer) {
     uint32_t param2 = (state.current_effects[active_profile_index] & 0xFF) |
                       ((state.effect_speeds[state.current_effects[active_profile_index]] & 0xFF) << 8) |
                       ((layer & 0xFF) << 16) | ((is_powered ? 1 : 0) << 24) |
-                      ((runtime_state.layer_enabled ? 1 : 0) << 27);
+                      ((runtime_state.layer_enabled ? 1 : 0) << 27) |
+                      ((runtime_state.fireworks_override ? 1 : 0) << 28);
 
     LOG_DBG("Central: Broadcasting ug_sync with layer %d", layer);
 #if DT_HAS_COMPAT_STATUS_OKAY(zmk_behavior_pk_underglow_sync)
@@ -657,6 +661,16 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
     uint8_t layer = (param2 >> 16) & 0xFF;
     runtime_state.on = (param2 >> 24) & 1;
     runtime_state.layer_enabled = (param2 >> 27) & 1;
+    bool old_fw = runtime_state.fireworks_override;
+    runtime_state.fireworks_override = (param2 >> 28) & 1;
+
+#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS)
+    if (!old_fw && runtime_state.fireworks_override) {
+        extern uint32_t fireworks_start_time;
+        fireworks_start_time = k_uptime_get_32();
+        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
+    }
+#endif
 
     zmk_pk_underglow_signal_peripheral_sync();
 
@@ -679,18 +693,19 @@ void zmk_pk_underglow_sync_state(uint32_t param1, uint32_t param2) {
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS)
 #include <zmk/events/ble_pairing_complete.h>
 
-bool fireworks_active = false;
 uint32_t fireworks_start_time = 0;
 
 static int pk_underglow_fireworks_listener(const zmk_event_t *eh) {
     const struct ble_pairing_complete *ev = as_ble_pairing_complete(eh);
     if (ev && ev->bonded) {
-        fireworks_active = true;
+        runtime_state.fireworks_override = true;
         fireworks_start_time = k_uptime_get_32();
 
-        // Ensure underglow is on
-        if (!runtime_state.on) {
-            zmk_pk_underglow_on();
+        if (!zmk_pk_underglow_is_on() || transient_off_pending) {
+            transient_off_pending = false;
+            zmk_pk_underglow_transient_on();
+        } else {
+            pk_ug_queue_push_sync(pk_underglow_top_layer());
         }
         
         k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));

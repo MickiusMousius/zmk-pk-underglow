@@ -37,7 +37,7 @@ LOG_MODULE_DECLARE(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);
  * PUBLIC API & STATE MUTATORS
  * ========================================================================== */
 
-static bool transient_off_pending = false;
+bool transient_off_pending = false;
 
 int zmk_pk_underglow_save_state(void) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
@@ -223,7 +223,12 @@ void zmk_pk_underglow_set_layer(uint8_t layer) {
     bool animated = zmk_rgbmap_is_animated(layer);
     int fade_delay = zmk_rgbmap_fade_delay(layer);
 
-    if (has_pixels || animated || is_ble_pairing) {
+    bool fireworks_running = false;
+#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS)
+    fireworks_running = runtime_state.fireworks_override;
+#endif
+
+    if (has_pixels || animated || is_ble_pairing || fireworks_running) {
         if (!zmk_pk_underglow_is_on() || transient_off_pending) {
             transient_off_pending = false;
             zmk_pk_underglow_transient_on();
@@ -238,6 +243,10 @@ void zmk_pk_underglow_set_layer(uint8_t layer) {
             k_timer_start(&underglow_tick, K_MSEC(PK_UG_FRAME_DURATION), K_MSEC(PK_UG_FRAME_DURATION));
         } else if (is_ble_pairing) {
             k_timer_start(&underglow_tick, K_MSEC(PK_UG_FRAME_DURATION), K_MSEC(PK_UG_FRAME_DURATION));
+#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS)
+        } else if (runtime_state.fireworks_override) {
+            k_timer_start(&underglow_tick, K_MSEC(PK_UG_FRAME_DURATION), K_MSEC(PK_UG_FRAME_DURATION));
+#endif
         }
 
         pk_ug_queue_push(PK_UG_TASK_RENDER_FRAME);

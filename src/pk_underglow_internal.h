@@ -95,6 +95,7 @@ struct pk_underglow_runtime_state {
     bool on;
     bool layer_enabled;
     bool ble_pairing_override;
+    bool fireworks_override;
 };
 
 
@@ -113,6 +114,8 @@ extern struct k_timer underglow_tick;
 #if defined(HAS_NVS_SETTINGS)
 extern struct k_work_delayable underglow_save_work;
 #endif
+
+extern bool transient_off_pending;
 
 // Utility functions
 struct zmk_led_hsb hsb_scale_min_max(struct zmk_led_hsb hsb);
