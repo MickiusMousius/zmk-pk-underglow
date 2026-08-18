@@ -1,4 +1,4 @@
-# pk_underglow Module
+# Per Key Underglow Module
 
 ## What it does
 The `pk_underglow` module is a powerful extension for ZMK that allows you to define per-key RGB underglow colors and effects. It enables you to precisely control the lighting of each individual LED on your keyboard and dynamically change the lighting based on the active layer, connection state, or custom effects.
@@ -12,8 +12,8 @@ Standard keyboard backlighting applies a single global color or effect across th
 - **Dynamic Connection Indicators:** Use specific behaviors to show Bluetooth and USB connection status directly on your keys (e.g., pulsing when active, solid when connected, off when disconnected).
 - **Per-Profile State Tracking:** The module automatically stores and restores your current underglow color, active effect, and animation speed for each individual output profile (USB and Bluetooth 0-4). You can configure a unique aesthetic for each connected device, and the lighting will seamlessly update when you switch profiles.
 - **Per-Effect Animation Speeds:** Each global effect tracks its own independent animation speed. You can configure a slow, relaxing Breathe Hue effect alongside a fast, responsive Ripple effect without constantly adjusting a global speed setting.
-
 - **Split Keyboard Synchronization:** Colors and effects are seamlessly synchronized between central and peripheral halves of split keyboards.
+- **Intelligent Power Management:** Automatically manages the hardware power state (via VCC pins) of your LEDs. It ensures they are only powered when actively rendering frames, and handles all the complex stabilization timeouts needed for seamless power cycling out of deep sleep or idle modes.
 
 ## Architecture & Performance Optimization
 This module was engineered from the ground up to minimize computational overhead and maximize energy efficiency, particularly for wireless split keyboards running Zephyr:
@@ -188,27 +188,33 @@ These optional Devicetree properties represent physical hardware characteristics
   - *Why it matters*: Gives the peripheral's power circuit ample time to stabilize out of deep sleep before the central forces the final active color state down the wire, ensuring the peripheral LEDs latch the data correctly.
 
 ### 4. Enable in `Kconfig`
-Enable the feature in your `board.conf` or `shield.conf` (or globally in your `zmk.conf`):
+Enable the feature in your `board.conf` or `shield.conf` (or globally in your `zmk.conf`). 
+Here are all available configuration options:
+
+| Kconfig Option | Default | Description |
+|---|---|---|
+| `CONFIG_ZMK_PK_UNDERGLOW` | `n` | Master switch to enable the pk_underglow module. |
+| `CONFIG_ZMK_PK_UNDERGLOW_ON_START` | `n` | If `y`, underglow powers on automatically when the keyboard boots. |
+| `CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_USB` | `n` | If `y`, underglow automatically turns off when unplugged from USB, and turns back on when plugged in. |
+| `CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE` | `n` | If `y`, underglow automatically turns off when the keyboard goes idle (stops typing for the native ZMK idle timeout). Peripherals ignore this and rely on deep sleep or central sync. |
+| `CONFIG_ZMK_PK_UNDERGLOW_BRT_START` | `100` | Default global brightness level (0-100) on boot. |
+| `CONFIG_ZMK_PK_UNDERGLOW_HUE_START` | `0` | Default global hue (0-359) on boot. |
+| `CONFIG_ZMK_PK_UNDERGLOW_SAT_START` | `100` | Default global saturation (0-100) on boot. |
+| `CONFIG_ZMK_PK_UNDERGLOW_SPD_START` | `3` | Default global animation speed (1-5) on boot. |
+| `CONFIG_ZMK_PK_UNDERGLOW_EFF_START` | `0` | Default global effect index on boot. |
+| `CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION` | `-1` | Saturation level for the custom White effect (0-100). |
+| `CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX` | `5` | Maximum number of concurrent twinkling stars for the Twinkle effect. |
+| `CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS` | `5` | Background brightness percentage (0-100) for reactive effects (Ripple, Twinkle). |
+| `CONFIG_ZMK_PK_UNDERGLOW_FPS` | `0` | Animation frame rate (FPS). If set to a valid positive value, overrides Devicetree `fps`. |
+| `CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS` | `y` | Enable the fireworks animation on successful BLE pairing. |
+| `CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS_DURATION` | `5000` | Duration of the fireworks animation in milliseconds. |
+
+Example `your_keyboard.conf`:
 ```ini
 CONFIG_ZMK_PK_UNDERGLOW=y
-
-# (Optional) Set the saturation for the custom White global effect (0-100)
-CONFIG_ZMK_PK_UNDERGLOW_WHITE_SATURATION=5
-
-# (Optional) Set the maximum number of concurrent twinkling stars for the Twinkle effect
-CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX=5
-
-# (Optional) Set the ambient background brightness percentage (0-100) for reactive effects (Ripple, Twinkle)
-CONFIG_ZMK_PK_UNDERGLOW_AMBIENT_BRIGHTNESS=5
-
-# (Optional) Override the underglow animation frame rate (FPS). Overrides the Devicetree `fps` property.
-CONFIG_ZMK_PK_UNDERGLOW_FPS=30
-
-# (Optional) Enable fireworks animation on successful BLE pairing (default: y)
-CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS=y
-
-# (Optional) Duration of the fireworks animation in milliseconds (default: 5000)
-CONFIG_ZMK_PK_UNDERGLOW_PAIRING_FIREWORKS_DURATION=5000
+CONFIG_ZMK_PK_UNDERGLOW_ON_START=y
+CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE=y
+CONFIG_ZMK_PK_UNDERGLOW_TWINKLE_MAX=8
 ```
 
 ---
@@ -267,7 +273,16 @@ Add a reference to `&pk_underglow` in your `.keymap` file. Inside this node, def
 
 ## Supported Behaviors
 
-The module provides several behaviors that can be mapped to individual LEDs in the `bindings` array:
+The module fully supports ZMK's native underglow controls, while providing several new custom behaviors that can be mapped to individual LEDs in the `bindings` array:
+
+### Global Underglow Control (`&rgb_ug`)
+Because `pk_underglow` replaces the standard ZMK underglow subsystem, it natively intercepts and supports all standard ZMK underglow behaviors to control the global state:
+- `&rgb_ug RGB_TOG` / `RGB_ON` / `RGB_OFF`: Toggle or set global power state.
+- `&rgb_ug RGB_EFF` / `RGB_EFR`: Cycle forwards/backwards through global effects.
+- `&rgb_ug RGB_HUI` / `RGB_HUD`: Adjust global hue.
+- `&rgb_ug RGB_SAI` / `RGB_SAD`: Adjust global saturation.
+- `&rgb_ug RGB_BRI` / `RGB_BRD`: Adjust global brightness.
+- `&rgb_ug RGB_SPI` / `RGB_SPD`: Adjust global animation speed.
 
 ### `&ug COLOR_NAME` or `&ug 0xRRGGBB` (Solid Color)
 Sets the key to a static, solid color regardless of global effects. 
@@ -302,7 +317,12 @@ Dynamically indicates when all 6 digits of a passkey have been entered and the k
 - Black/Off while typing the first 0-5 digits.
 - **Fast Blinks** the specified color when 6 digits have been typed.
 
-> **Note:** For layers utilizing dynamic pulsing effects like `&eff_bt` or `&eff_usb`, make sure to include the `animated;` property in the layer definition (as seen in `layer_settings` above).
+### HID Indicators (`&ug_cl`, `&ug_nl`, `&ug_sl`)
+Displays the status of Caps Lock, Num Lock, and Scroll Lock. Each behavior takes two color parameters: the first is the color when the lock is **off**, and the second is the color when the lock is **on**.
+- **Usage:** `&ug_cl 0x000000 0xFF0000` (Off when Caps Lock is disabled, Red when Caps Lock is enabled).
+- **Behaviors:** `&ug_cl` (Caps Lock), `&ug_nl` (Num Lock), `&ug_sl` (Scroll Lock).
+
+> **Note:** For layers utilizing dynamic pulsing effects like `&eff_bt`, `&eff_usb`, or HID indicators, make sure to include the `animated;` property in the layer definition (as seen in `layer_settings` above).
 
 # Attribution
 
