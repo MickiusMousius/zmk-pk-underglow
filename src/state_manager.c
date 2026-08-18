@@ -79,6 +79,16 @@
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 #include <zmk/events/split_peripheral_status_changed.h>
+
+static void peripheral_disconnect_work_handler(struct k_work *work) { zmk_pk_underglow_off(); }
+
+
+K_WORK_DEFINE(peripheral_disconnect_work, peripheral_disconnect_work_handler);
+
+static void peripheral_disconnect_timer_handler(struct k_timer *timer) { k_work_submit(&peripheral_disconnect_work); }
+
+
+K_TIMER_DEFINE(peripheral_disconnect_timer, peripheral_disconnect_timer_handler, NULL);
 #endif
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
@@ -525,7 +535,11 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
         }
 #if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
         else if (activity_state == ZMK_ACTIVITY_IDLE) {
+#if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+            LOG_DBG("Peripheral: Ignoring idle state change for underglow");
+#else
             zmk_pk_underglow_transient_off();
+#endif
         } else if (activity_state == ZMK_ACTIVITY_ACTIVE) {
             if (runtime_state.on) {
                 if (runtime_state.layer_enabled) {
@@ -588,9 +602,15 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
         const struct zmk_split_peripheral_status_changed *ev = as_zmk_split_peripheral_status_changed(eh);
         LOG_DBG("Peripheral: Split status changed. Connected: %d", ev->connected);
         if (!ev->connected) {
-            zmk_pk_underglow_off();
+            int timeout = CONFIG_ZMK_IDLE_TIMEOUT;
+            if (timeout == 0) {
+                zmk_pk_underglow_off();
+            } else if (timeout > 0) {
+                k_timer_start(&peripheral_disconnect_timer, K_MSEC(timeout), K_NO_WAIT);
+            }
+        } else {
+            k_timer_stop(&peripheral_disconnect_timer);
         }
-        // If connected, we do nothing and wait for the central to sync us.
         return ZMK_EV_EVENT_BUBBLE;
     }
 #endif
