@@ -80,7 +80,9 @@ Optional functions:
 
 # Installation
 
-To use this module, you need to add it to your ZMK user config repository.
+To use this module, you need to add it to your ZMK user config repository. 
+
+> **Note:** `zmk-pk-underglow` requires the `zmk-ble-passkey` module as a dependency for the BLE pairing indicators to function correctly. Ensure both modules are included in your `west.yml`.
 
 Open your `config/west.yml` file and add this repository to your `remotes` and `projects` sections:
 
@@ -89,18 +91,22 @@ manifest:
   remotes:
     - name: zmkfirmware
       url-base: https://github.com/zmkfirmware
-    # Add your GitHub username & organization here where the module is hosted
-    - name: your_github_username
-      url-base: https://github.com/your_github_username
+    # Add the remote where this repository is hosted
+    - name: MickiusMousius
+      url-base: https://github.com/MickiusMousius
 
   projects:
     - name: zmk
       remote: zmkfirmware
       revision: main
       import: app/west.yml
+    # Add the zmk-ble-passkey dependency here
+    - name: zmk-ble-passkey
+      remote: MickiusMousius
+      revision: main
     # Add the pk_underglow module here
     - name: zmk-pk-underglow
-      remote: your_github_username
+      remote: MickiusMousius
       revision: main
 
   self:
