@@ -191,7 +191,7 @@ void zmk_pk_underglow_set_layer(uint8_t layer) {
 
     bool is_ble_pairing = zmk_rgbmap_is_ble_pairing(layer);
 
-    if (!runtime_state.layer_enabled && !runtime_state.on && !is_ble_pairing) {
+    if (!runtime_state.on && !is_ble_pairing) {
         if (runtime_state.ble_pairing_override) {
             runtime_state.ble_pairing_override = false;
             zmk_pk_underglow_transient_off();
