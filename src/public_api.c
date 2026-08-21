@@ -31,7 +31,7 @@
 
 #include "pk_underglow_internal.h"
 
-LOG_MODULE_DECLARE(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);
+LOG_MODULE_REGISTER(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);
 
 /* ==========================================================================
  * PUBLIC API & STATE MUTATORS

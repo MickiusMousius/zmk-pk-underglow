@@ -8,6 +8,10 @@ menuconfig ZMK_PK_UNDERGLOW
 	  Enable support for per-key and per-layer RGB underglow.
 	  This acts as a replacement for standard ZMK RGB Underglow.
 
+module = ZMK_PK_UNDERGLOW
+module-str = "ZMK Per-Key Underglow"
+source "subsys/logging/Kconfig.template.log_config"
+
 config ZMK_PK_UNDERGLOW_LAYER
 	bool "Enable ZMK Per-Key Underglow Layer feature"
 	depends on ZMK_PK_UNDERGLOW
