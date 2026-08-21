@@ -62,7 +62,8 @@ const struct pk_underglow_effect_ops pk_underglow_effects[] = {
         .render = zmk_pk_underglow_effect_my_effect,
         // Optional functions:
         // .select = zmk_pk_underglow_effect_my_effect_init,
-        // .pos_changed = zmk_pk_underglow_effect_my_effect_trigger
+        // .pos_changed = zmk_pk_underglow_effect_my_effect_trigger,
+        // .is_animated = true
     },
 };
 ```
@@ -75,6 +76,7 @@ Optional functions:
 - `.select`: Called once when the user cycles to this effect. Great for initializing state or resetting variables.
 - `.pos_changed`: Called whenever a key is pressed. Perfect for reactive effects like ripple or twinkle.
 - `.is_layer_indicator`: Set to `true` if this effect renders a layer map instead of a global animation.
+- `.is_animated`: Set to `true` if your effect requires the 20fps background timer to continuously re-render (e.g. Swirl, Breathe). If your effect is completely static (e.g. Solid Color, White) or relies purely on key press events, set this to `false` to disable the background timer and achieve massive power savings.
 
 ---
 
@@ -323,6 +325,8 @@ Displays the status of Caps Lock, Num Lock, and Scroll Lock. Each behavior takes
 - **Behaviors:** `&ug_cl` (Caps Lock), `&ug_nl` (Num Lock), `&ug_sl` (Scroll Lock).
 
 > **Note:** For layers utilizing dynamic pulsing effects like `&eff_bt`, `&eff_usb`, or HID indicators, make sure to include the `animated;` property in the layer definition (as seen in `layer_settings` above).
+
+> **Warning:** Adding the `animated;` property to a layer incurs a **CPU performance penalty**. When a layer is animated, the MCU must manually poll the virtual key binding of every single physical pixel 20 times a second to resolve its color. While the raw power consumption of the LEDs themselves will generally dwarf the MCU's energy usage, this constant polling still prevents the processor from entering deeper idle states. Use this property thoughtfully.
 
 # Attribution
 
