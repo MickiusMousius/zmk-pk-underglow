@@ -104,7 +104,7 @@ int zmk_pk_underglow_transient_on(void) {
     transient_off_pending = false;
 
     pk_ug_queue_push_power(PK_UG_TASK_POWER_ON);
-    
+
     if (pk_underglow_effects[state.current_effects[active_profile_index]].is_animated) {
         k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
     } else {
