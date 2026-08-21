@@ -35,14 +35,14 @@ LOG_MODULE_DECLARE(zmk_pk_underglow, CONFIG_ZMK_PK_UNDERGLOW_LOG_LEVEL);
 static struct pk_ug_task task_queue[MAX_QUEUE_SIZE];
 static int queue_head = 0;
 
-K_MUTEX_DEFINE(queue_mutex);
+static struct k_spinlock queue_spinlock;
 K_SEM_DEFINE(queue_sem, 0, K_SEM_MAX_LIMIT);
 
 static K_THREAD_STACK_DEFINE(ug_thread_stack, 1024);
 static struct k_thread ug_thread_data;
 
 void pk_ug_queue_push(pk_ug_task_type_t type) {
-    k_mutex_lock(&queue_mutex, K_FOREVER);
+    k_spinlock_key_t key = k_spin_lock(&queue_spinlock);
 
     // For other types, deduplicate by removing existing instances of the same type,
     // ensuring the new one is placed at the tail
@@ -62,12 +62,12 @@ void pk_ug_queue_push(pk_ug_task_type_t type) {
         LOG_ERR("PK Underglow queue overflow");
     }
 
-    k_mutex_unlock(&queue_mutex);
+    k_spin_unlock(&queue_spinlock, key);
 }
 
 
 void pk_ug_queue_push_power(pk_ug_task_type_t type) {
-    k_mutex_lock(&queue_mutex, K_FOREVER);
+    k_spinlock_key_t key = k_spin_lock(&queue_spinlock);
 
     // Deduplication and Invalidation
     if (type == PK_UG_TASK_POWER_OFF) {
@@ -112,12 +112,12 @@ void pk_ug_queue_push_power(pk_ug_task_type_t type) {
         LOG_ERR("PK Underglow queue overflow");
     }
 
-    k_mutex_unlock(&queue_mutex);
+    k_spin_unlock(&queue_spinlock, key);
 }
 
 
 void pk_ug_queue_push_sync(uint8_t layer) {
-    k_mutex_lock(&queue_mutex, K_FOREVER);
+    k_spinlock_key_t key = k_spin_lock(&queue_spinlock);
 
     int new_head = 0;
     for (int i = 0; i < queue_head; i++) {
@@ -136,7 +136,7 @@ void pk_ug_queue_push_sync(uint8_t layer) {
         LOG_ERR("PK Underglow queue overflow");
     }
 
-    k_mutex_unlock(&queue_mutex);
+    k_spin_unlock(&queue_spinlock, key);
 }
 
 
@@ -144,9 +144,9 @@ static void ug_worker_thread(void *p1, void *p2, void *p3) {
     while (1) {
         k_sem_take(&queue_sem, K_FOREVER);
 
-        k_mutex_lock(&queue_mutex, K_FOREVER);
+        k_spinlock_key_t key = k_spin_lock(&queue_spinlock);
         if (queue_head == 0) {
-            k_mutex_unlock(&queue_mutex);
+            k_spin_unlock(&queue_spinlock, key);
             continue;
         }
 
@@ -157,7 +157,7 @@ static void ug_worker_thread(void *p1, void *p2, void *p3) {
         }
         queue_head--;
 
-        k_mutex_unlock(&queue_mutex);
+        k_spin_unlock(&queue_spinlock, key);
 
         switch (current_task.type) {
         case PK_UG_TASK_POWER_ON:
