@@ -746,6 +746,12 @@ static int pk_underglow_pm_action(const struct device *dev, enum pm_device_actio
         if (is_powered) {
             pk_ug_task_power_off_execute();
         }
+#if defined(HAS_NVS_SETTINGS)
+        if (k_work_delayable_is_pending(&underglow_save_work)) {
+            k_work_cancel_delayable(&underglow_save_work);
+            pk_ug_task_save_settings_execute();
+        }
+#endif
         break;
     case PM_DEVICE_ACTION_RESUME:
         if (runtime_state.on) {
