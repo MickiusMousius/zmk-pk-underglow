@@ -532,24 +532,23 @@ static int pk_underglow_event_listener(const zmk_event_t *eh) {
         enum zmk_activity_state activity_state = zmk_activity_get_state();
         if (activity_state == ZMK_ACTIVITY_SLEEP) {
             zmk_pk_underglow_transient_off();
-        }
-#if IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)
-        else if (activity_state == ZMK_ACTIVITY_IDLE) {
-#if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-            LOG_DBG("Peripheral: Ignoring idle state change for underglow");
-#else
-            zmk_pk_underglow_transient_off();
-#endif
-        } else if (activity_state == ZMK_ACTIVITY_ACTIVE) {
-            if (runtime_state.on) {
-                if (runtime_state.layer_enabled) {
-                    zmk_pk_underglow_set_layer(pk_underglow_top_layer());
+        } else if (IS_ENABLED(CONFIG_ZMK_PK_UNDERGLOW_AUTO_OFF_IDLE)) {
+            if (activity_state == ZMK_ACTIVITY_IDLE) {
+                if (IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)) {
+                    LOG_DBG("Peripheral: Ignoring idle state change for underglow");
                 } else {
-                    zmk_pk_underglow_transient_on();
+                    zmk_pk_underglow_transient_off();
+                }
+            } else if (activity_state == ZMK_ACTIVITY_ACTIVE) {
+                if (runtime_state.on) {
+                    if (runtime_state.layer_enabled) {
+                        zmk_pk_underglow_set_layer(pk_underglow_top_layer());
+                    } else {
+                        zmk_pk_underglow_transient_on();
+                    }
                 }
             }
         }
-#endif
         return ZMK_EV_EVENT_BUBBLE;
     }
 

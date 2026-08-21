@@ -202,27 +202,29 @@ void zmk_pk_underglow_set_layer(uint8_t layer) {
 
     bool is_ble_pairing = zmk_rgbmap_is_ble_pairing(layer);
 
-    if (!runtime_state.on && !is_ble_pairing) {
-        if (runtime_state.ble_pairing_override) {
-            runtime_state.ble_pairing_override = false;
-            zmk_pk_underglow_transient_off();
-        }
-        return;
-    }
-
-    if (!is_ble_pairing && runtime_state.on && !runtime_state.layer_enabled) {
-        if (runtime_state.ble_pairing_override) {
-            runtime_state.ble_pairing_override = false;
-            zmk_pk_underglow_transient_on();
-        }
-        return;
-    }
-
-    if (is_ble_pairing) {
-        runtime_state.ble_pairing_override = true;
-    } else {
+    // If we are exiting a BLE pairing override state, we need to restore the underlying visual state
+    if (runtime_state.ble_pairing_override && !is_ble_pairing) {
         runtime_state.ble_pairing_override = false;
+
+        // Restore the previous state depending on whether the underglow should be physically on or off
+        if (runtime_state.on && runtime_state.layer_enabled) {
+            // Let execution continue to re-render the normal layer
+        } else if (runtime_state.on && !runtime_state.layer_enabled) {
+            zmk_pk_underglow_transient_on(); // Restore normal animation
+            return;
+        } else {
+            zmk_pk_underglow_transient_off(); // Restore power off state
+            return;
+        }
     }
+
+    // If the underglow is completely off and this isn't a pairing layer forcing it on, exit early.
+    if (!runtime_state.on && !is_ble_pairing) return;
+    
+    // If the underglow is on but layer indicators are disabled, exit early (unless forcing a pairing layer).
+    if (runtime_state.on && !runtime_state.layer_enabled && !is_ble_pairing) return;
+
+    runtime_state.ble_pairing_override = is_ble_pairing;
 
     const struct zmk_behavior_binding *rgbmap = pk_underglow_get_bindings(layer);
 

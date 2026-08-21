@@ -28,6 +28,16 @@ static struct led_rgb hex_to_rgb(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 
+/**
+ * @brief Applies the colors defined in a layer's rgbmap to the underglow LEDs.
+ * 
+ * @warning PERFORMANCE PENALTY: This function iterates over every physical pixel,
+ * looks up the corresponding keymap binding, and invokes the behavior's virtual 
+ * `binding_pressed` function.
+ * If this is called from an `animated` layer (i.e., 20 times per second), it 
+ * will consume significant CPU time and aggressively drain the battery.
+ * Animated layer effects should be used very sparingly.
+ */
 int zmk_pk_underglow_apply_rgbmap(const struct zmk_behavior_binding *bindings, size_t rgbmap_len, uint8_t layer) {
     int rc = 0;
     uint64_t uptime = k_uptime_get();
