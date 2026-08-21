@@ -77,6 +77,7 @@ struct pk_underglow_effect_ops {
     pk_underglow_select_t select;
     pk_underglow_pos_changed_t pos_changed;
     bool is_layer_indicator;
+    bool is_animated;
 };
 
 

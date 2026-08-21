@@ -81,7 +81,12 @@ int zmk_pk_underglow_on(void) {
         zmk_pk_underglow_set_layer(pk_underglow_top_layer());
     } else {
         state.animation_step = 0;
-        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
+        if (pk_underglow_effects[state.current_effects[active_profile_index]].is_animated) {
+            k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
+        } else {
+            k_timer_stop(&underglow_tick);
+            pk_ug_queue_push(PK_UG_TASK_RENDER_FRAME);
+        }
     }
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
@@ -99,7 +104,13 @@ int zmk_pk_underglow_transient_on(void) {
     transient_off_pending = false;
 
     pk_ug_queue_push_power(PK_UG_TASK_POWER_ON);
-    k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
+    
+    if (pk_underglow_effects[state.current_effects[active_profile_index]].is_animated) {
+        k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(PK_UG_FRAME_DURATION));
+    } else {
+        k_timer_stop(&underglow_tick);
+        pk_ug_queue_push(PK_UG_TASK_RENDER_FRAME);
+    }
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     pk_ug_queue_push_sync(pk_underglow_top_layer());
@@ -265,6 +276,8 @@ int zmk_pk_underglow_set_hsb(struct zmk_led_hsb color) {
 
     if (runtime_state.layer_enabled) {
         zmk_pk_underglow_set_layer(pk_underglow_top_layer());
+    } else if (runtime_state.on && !pk_underglow_effects[state.current_effects[active_profile_index]].is_animated) {
+        pk_ug_queue_push(PK_UG_TASK_RENDER_FRAME);
     }
 
     return zmk_pk_underglow_save_state();

@@ -747,6 +747,15 @@ static int pk_underglow_pm_action(const struct device *dev, enum pm_device_actio
             pk_ug_task_power_off_execute();
         }
         break;
+    case PM_DEVICE_ACTION_RESUME:
+        if (runtime_state.on) {
+            if (runtime_state.layer_enabled) {
+                zmk_pk_underglow_set_layer(pk_underglow_top_layer());
+            } else {
+                zmk_pk_underglow_transient_on();
+            }
+        }
+        break;
     default:
         return -ENOTSUP;
     }
